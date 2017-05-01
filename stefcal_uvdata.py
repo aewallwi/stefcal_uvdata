@@ -4,14 +4,8 @@ from pyuvdata import UVCal
 
 
 
-
-class CalFlagWeights():
-    """
-    Defines a class for storing weights and flags in calibration
-    Properties: 
-    """
+            
     
-    def __init__():
 class Stefcal():
     """
     Defines a class for performing stefcal on uvdata sets.
