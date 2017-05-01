@@ -1,6 +1,6 @@
 from pyuvdata import UVData
 from pyuvdata import UVCal
-
+from calFlagWeights import CalFlagWeights
 
 
 
@@ -10,23 +10,114 @@ class Stefcal():
     """
     Defines a class for performing stefcal on uvdata sets.
     Attributes:
-    _model_vis: uvdata of model
-    _measured_vis: uvdata of measurements
-    _cal_flag_weights: CalFlagWeights object storing flags and weights
-    _cal_solution: uvcal object
+    model_vis: uvdata of model
+    measured_vis: uvdata of measurements
+    cal_flag_weights: CalFlagWeights object storing flags and weights
+    cal_solution: uvcal object
     """
     def __init__():
-        self._model_vis=UVData()
-        self._measured_vis=UVData()
-        self._cal_flag_weights=CalFlagWeights()
-        self._cal_solution=UVCal()
+        self.model_vis=UVData()
+        self.measured_vis=UVData()
+        self.cal_flag_weights=CalFlagWeights()
+        self.cal_solution=UVCal()
+    def _compare_properties(self,property1,property2,compare_flags=False,compare_weights=False,compare_phase=False):
+        """
+        compare properties of uvdata sets and calweights. 
+        Args:
+             property1, CalFlagWeight or UVData object to be compared to 
+             property2, CalFlagWeight. 
+             compare_flags: directly compare the flags
+             compare_weights: directly compare nsample_array 
+             compare_phase: if two data sets, make sure they are phased in the same way
+        """
+        checkpass=True
+        if property1.Nfreqs!=property2.Nfreqs:
+            checkpass=False
+            print("Nfreqs not the same")
+        if property1.Njones!=property2.Njones:
+            checkpass=False
+            print("Njones not the same")
+        if property1.Ntimes!=property2.Ntimes:
+            checkpass=False
+            print("Ntimes not the same")
+        if property1.Nspws!=property2.Nspws:
+            checkpass=False
+            print("Nspws not the same")
+        if property1.freq_range!=property2.freq_range:
+            checkpass=False
+            print("freq_range not the same")            
+        if property1.time_range!=property2.time_range:
+            checkpass=False
+            print("time_range not the same")
+        if property1.telescope_name!=property2.telescope_name:
+            checkpass=False
+            print("telescope_name not the same")
+        if property1.Nants_data!=property2.Nants_data:
+            checkpass=False
+            print("Nants_data not the same")
+        if property1.Nants_telescope!=property2.Nants_telescope:
+            checkpass=False
+            print("Nants_telescope not the same")
+        if property1.antenna_names!=property2.antenna_names:
+            checkpass=False
+            print("antenna_names not the same")
+        if property1.antenna_numbers!=property2.antenna_numbers:
+            checkpass=False
+            print("antenna_numbers not the same")
+        if property1.channel_width!=property2.channel_width:
+            checkpass=False
+            print("channel_width not the same")
+        if property1.jones_array!=property2.jones_array:
+            checkpass=False
+            print("jones_array not the same")
+        if property1.time_array!=property2.time_array:
+            checkpass=False
+            print("time_array not the same")
+        if property1.integration_time!=property2.integration_time:
+            checkpass=False
+            print("integration times not the same")
+        if property1.x_orientation!=property2.x_orientation:
+            checkpass=False
+            print("integration times not the same")
+        if compare_flags:
+            if property1.flag_array!=property2.flag_array:
+                checkpass=False
+                print("flag_array not the same")
+        if compare_weights:
+            if property1.nsample_array!=property2.nsample_array:
+                checkpass=False
+                print("nsample_array not the same")
+        if compare_phase:
+            if (property1.phase_type!=property2.phase_type or
+                property1.phase_center_ra!=property2.phase_center_ra or
+                property1.phase_center_dec!=property2.phase_center_dec):
+                checkpass = False
+                print("phase centers not the same")
+        if compare_ant_positions:
+            if property1.antenna_positions!=property2.antenna_positions:
+                checkpass=False
+                print("antenna positions not the same") 
+                
+            
+        return checkpass
+                            
+        
     def _check_consistency(self):
         """
         check consistency between data and model uvdata objects
         also check whether the calweights object has the correct
         dimension
         """
+        if not(self._compare_properties(self.model_vis,self.measured_vis,
+                                        compare_flags=True,
+                                        compare_weights=True,
+                                        compare-phase=True,
+                                        compare_ant_positions=True)):
+            raise ValueError("model_vis not consistent with measured_vis")
         
+        if(self.compare_properties(self.model_vis,self.flag_weights)):
+            raise ValueError("flag weights non consistent with visibilities")
+            
     def _load_vis_ms(self,msname):
         '''
         read in ms visibilities
@@ -84,6 +175,7 @@ class Stefcal():
         else:
             assert flagweightsfile
             self.cal_flag_weights.read_file(flagweightsfile)
+        self._check_consistency()
     def from_ms(self,msfile,flagweights_fromdata,flagweightsfile=None):
         """
         initialize stefcal from a measurement set
@@ -137,9 +229,4 @@ class Stefcal():
                          flagweights_fromdata=flagweights_fromdata,
                          flagweightsfile=flagweightsfile,
                          model=uvfitsmodel)
-        
-        
-        
-        
-        
         

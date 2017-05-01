@@ -1,8 +1,7 @@
-
 import numpy as np
 import pyuvdata.parameter as uvp
 import copy
-
+import pickle
 
 class CalFlagWeights():
     """
@@ -153,7 +152,7 @@ class CalFlagWeights():
                                           '.  Git description: ' + uvversion.git_description)
 
 
-        def fromdata(self,uvdata):
+        def from_data(self,uvdata):
             '''
             initialize a flagweights object from a uvdata set.
             Args: uvdata, a uvdata object      
@@ -179,5 +178,41 @@ class CalFlagWeights():
             self.x_orientation=copy.copy(uvdata.x_orientation)
             self.flag_array=copy.copy(uvdata.flag_array)
             self.weight_array=copy.copy(uvdata.nsample_array)
+        def from_file(self,datafile):
+            '''
+            initialize flagweights object from calFlagWeights file
+            args: name of data file to read in
+            '''
+            data=pickle.load(open(datafile,"rb"))
+            self.Nfreqs=copy.copy(data.Nfreqs)
+            self.Njones=copy.copy(data.Njones)
+            self.Ntimes=copy.copy(data.Ntimes)
+            self.history=copy.copy(data.history)
+            self.Nspws=copy.copy(data.Nspws)
+            self.freq_range=copy.copy(data.freq_range)
+            self.time_rage=copy.copy(data.time_range)
+            self.telescope_name=copy.copy(data.telescope_name)
+            self.Nants_data=copy.copy(data.Nants_data)
+            self.Nants_telescope=copy.copy(data.Nants_telescope)
+            self.ant_array=copy.copy(data.ant_array)
+            self.antenna_names=copy.copy(data.antenna_names)
+            self.antenna_numbers=copy.copy(data.antenna_numbers)
+            self.freq_array=copy.copy(data.freq_array)
+            self.channel_width=copy.copy(data.channel_width)
+	    self.jones_array=copy.copy(data.jones_array)
+	    self.time_array=copy.copy(data.time_array)
+            self.integration_time=copy.copy(data.integration_time)
+            self.x_orientation=copy.copy(data.x_orientation)
+            self.flag_array=copy.copy(data.flag_array)
+            self.weight_array=copy.copy(data.weight_array)
+            del(data)
             
+        def to_file(self,datafile,clobber=False):
+            '''
+            write calweights object to a file using pickle
+            '''
+            if clobber or not(os.path.exists(datafile)):
+                pickle.dump(self,open(datafile,"wb"))
+            else:
+                print("%s already exists. Use clobber=True to overwrite"%datafile)
             
