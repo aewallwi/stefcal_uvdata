@@ -1,12 +1,32 @@
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from calFlagWeights import CalFlagWeights
+import stefcal
+import uuid
+
+class StefCalMeta():
+    """
+    Defines a container class for stefcal meta parameters 
+    contains stefcal parameters along with filepaths
+    to data, model, and flag_weights files. 
+    """
+    def __init__(self,id,refant=0,n_phase_iter=5,
+                 n_cycles=1,min_bl_per_ant=2,eps=1e-10,
+                 min_ant_times=1,trim_neff=False):
+        self.refant=refant
+        self.n_phase_iter=n_phase_iter
+        self.min_bl_per_ant=min_bl_per_ant
+        self.eps=eps
+        self.min_ant_times=min_ant_times
+        self.trim_neff=trim_neff
+        self.id=id
+        self.data_file=""
+        self.flag_weights_file=""
+        self.model_file=""
+        
 
 
-
-            
-    
-class Stefcal():
+class StefCalUVData():
     """
     Defines a class for performing stefcal on uvdata sets.
     Attributes:
@@ -14,12 +34,27 @@ class Stefcal():
     measured_vis: uvdata of measurements
     cal_flag_weights: CalFlagWeights object storing flags and weights
     cal_solution: uvcal object
+    meta_params: StefCalMeta object containing information on calibration
+                 run
+    id: unique uuid corresponding to calibration run. 
     """
-    def __init__():
+    def __init__(self,refant=0,n_phase_iter=5,
+                 n_cycles=1,min_bl_per_ant=2,eps=1e-10,
+                 min_ant_times=1,trim_neff=False):
+        self.id=uuid.uuid4()
         self.model_vis=UVData()
         self.measured_vis=UVData()
-        self.cal_flag_weights=CalFlagWeights()
+        self.cal_flag_weights=CalFlagWeights(self.id)
         self.cal_solution=UVCal()
+        self.meta_params=StefCalMeta(refant,
+                                     n_phase_iter,
+                                     n_cycles,
+                                     min_bl_per_ant,
+                                     eps,
+                                     min_ant_times,
+                                     trim_neff,
+                                     self.id)
+        
     def _compare_properties(self,property1,property2,compare_flags=False,compare_weights=False,compare_phase=False):
         """
         compare properties of uvdata sets and calweights. 
@@ -162,19 +197,23 @@ class Stefcal():
         assert mode in ['MS','UVFITS','MIRIAD','FHD']
         if mode=='MS':
             self.__load_ms(data)
+            self.meta_params.model_file=data
         elif mode=='UVFITS':
             assert model
             self.__load_uvfits(data,model)
+            self.meta_params.model_file=model
         elif mode=='MIRIAD':
             assert model
             self.__load_miriad(data,model)
+            self.meta_params.model_file=model
         elif mode=='FHD':
             self.__load_fhd(data)
         if(flagweights_fromdata):
-            self.cal_flag_weights.fromdata(self.model_data)
+            self.cal_flag_weights.from_data(self.model_data)
         else:
             assert flagweightsfile
-            self.cal_flag_weights.read_file(flagweightsfile)
+            self.cal_flag_weights.from_file(flagweightsfile)
+        self.meta_params.data_file=data
         self._check_consistency()
     def from_ms(self,msfile,flagweights_fromdata,flagweightsfile=None):
         """
@@ -229,4 +268,12 @@ class Stefcal():
                          flagweights_fromdata=flagweights_fromdata,
                          flagweightsfile=flagweightsfile,
                          model=uvfitsmodel)
+        
+    
+    def stefcalibrate(self,parallelized=False):
+        '''
+        Run stefcal
+        Args: 
+            parallilized, choose this if you want calibration to be parallelized across frequency channels
+        '''
         

@@ -2,6 +2,7 @@ import numpy as np
 import pyuvdata.parameter as uvp
 import copy
 import pickle
+import uuid
 
 class CalFlagWeights():
     """
@@ -9,7 +10,8 @@ class CalFlagWeights():
     Properties: 
     """
       """ A class defining a calibration """
-    def __init__(self):
+    def __init__(self,id):
+        self.id=id #unique identifier. 
         radian_tol = 10 * 2 * np.pi * 1e-3 / (60.0 * 60.0 * 360.0)
         self._Nfreqs = uvp.UVParameter('Nfreqs',
                                        description='Number of frequency channels',
@@ -215,4 +217,6 @@ class CalFlagWeights():
                 pickle.dump(self,open(datafile,"wb"))
             else:
                 print("%s already exists. Use clobber=True to overwrite"%datafile)
+            
+
             
