@@ -137,11 +137,13 @@ class CalFlagWeights():
                                          expected_type=np.bool)
         desc=('Array of weights applied to data only in calibration.'
               'shape: (Nblts,Nspws,Nfreqs,Npols)')
-        self._weight_array=uvp.UVParameter('weight_array',description=desc,
+        self._weights_array=uvp.UVParameter('weights_array',description=desc,
                                            form=('Nblts','Nspws','Nfreqs','Npols'),
                                            expected_type=np.float)
         
-        
+        self._chi_squares=uvp.UVParameter('chi_squares',description=desc,
+                                          form=('Nants_data','NFreqs','NPols'),
+                                          expected_type=float,required=False)
     
    
         # String to add to history of any files written with this version of pyuvdata
@@ -153,42 +155,37 @@ class CalFlagWeights():
                                           '.  Git branch: ' + uvversion.git_branch +
                                           '.  Git description: ' + uvversion.git_description)
 
-
-        def from_data(self,uvdata):
-            '''
-            initialize a flagweights object from a uvdata set.
-            Args: uvdata, a uvdata object      
-            '''
-            self.Nfreqs=copy.copy(uvdata.Nfreqs)
-            self.Njones=copy.copy(uvdata.Njones)
-            self.Ntimes=copy.copy(uvdata.Ntimes)
-            self.history=copy.copy(uvdata.history)
-            self.Nspws=copy.copy(uvdata.Nspws)
-            self.freq_range=copy.copy(uvdata.freq_range)
-            self.time_rage=copy.copy(uvdata.time_range)
-            self.telescope_name=copy.copy(uvdata.telescope_name)
-            self.Nants_data=copy.copy(uvdata.Nants_data)
-            self.Nants_telescope=copy.copy(uvdata.Nants_telescope)
-            self.ant_array=copy.copy(uvdata.ant_array)
-            self.antenna_names=copy.copy(uvdata.antenna_names)
-            self.antenna_numbers=copy.copy(uvdata.antenna_numbers)
-            self.freq_array=copy.copy(uvdata.freq_array)
-            self.channel_width=copy.copy(uvdata.channel_width)
-	    self.jones_array=copy.copy(uvdata.jones_array)
-	    self.time_array=copy.copy(uvdata.time_array)
-            self.integration_time=copy.copy(uvdata.integration_time)
-            self.x_orientation=copy.copy(uvdata.x_orientation)
-            self.flag_array=copy.copy(uvdata.flag_array)
-            self.weight_array=copy.copy(uvdata.nsample_array)
-        def from_file(self,datafile):
+        self._noise_tavg=uvp.UVParameter('noise_tavg',
+                                         description='noise levels in uncalibrated'
+                                         'visibilities computed by taking differences'
+                                         'in frequency and restricted average over'
+                                         ' all times',
+                                         form=('Nbls','NFreqs','Npols'),
+                                         expected_type=np.float,required=False)
+        self._noise_favg=uvp.UVParameter('noise_favg',
+                                         description='noise levels in uncalibrated'
+                                         'visibilities computed by taking differences'
+                                         'in time and restricted average over'
+                                         ' all frequency',
+                                         form=('Nblts','Npols'),
+                                         expected_type=np.float,required=False)
+      
+            
+        def from_file(self,datafile,mode='UVDATA'):
             '''
             initialize flagweights object from calFlagWeights file
             args: name of data file to read in
             '''
-            data=pickle.load(open(datafile,"rb"))
+            assert mode in ['UVDATA','CALFLAGWEIGHTS']:
+            if mode=='CALFLAGWEIGHTS':
+                data=pickle.load(open(datafile,"rb"))
             self.Nfreqs=copy.copy(data.Nfreqs)
             self.Njones=copy.copy(data.Njones)
             self.Ntimes=copy.copy(data.Ntimes)
+            self.Nspws=copy.copy(uvdata.Nspws)
+            self.Nbls=copy.copy(uvdata.Nbls)
+            self.Nblts=copy.copy(uvdata.Nblts)
+            self.uvw=copy.copy(uvdata.uvw)
             self.history=copy.copy(data.history)
             self.Nspws=copy.copy(data.Nspws)
             self.freq_range=copy.copy(data.freq_range)
@@ -206,9 +203,11 @@ class CalFlagWeights():
             self.integration_time=copy.copy(data.integration_time)
             self.x_orientation=copy.copy(data.x_orientation)
             self.flag_array=copy.copy(data.flag_array)
-            self.weight_array=copy.copy(data.weight_array)
+            self.weights_array=copy.copy(data.weights_array)
             del(data)
-            
+
+
+        def read_data
         def to_file(self,datafile,clobber=False):
             '''
             write calweights object to a file using pickle

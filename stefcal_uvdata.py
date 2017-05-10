@@ -8,12 +8,14 @@ import uuid
 class StefCalMeta():
     """
     Defines a container class for stefcal meta parameters 
-    contains stefcal parameters along with filepaths
+    contains stefcal parameters, chi-squares, noise
+    calculations along with filepaths
     to data, model, and flag_weights files. 
     """
     def __init__(self,id,refant=0,n_phase_iter=5,
                  n_cycles=1,min_bl_per_ant=2,eps=1e-10,
-                 min_ant_times=1,trim_neff=False):
+                 min_ant_times=1,trim_neff=False,spw=0,
+                 t_avg=1):
         self.refant=refant
         self.n_phase_iter=n_phase_iter
         self.min_bl_per_ant=min_bl_per_ant
@@ -24,9 +26,71 @@ class StefCalMeta():
         self.data_file=""
         self.flag_weights_file=""
         self.model_file=""
+        self.spw=spw
+        self.t_avg=t_avg
+
+        #self._iterations=uvp.UVParameter('iterations',description='Number of iterations for calibration',
+
+        
+        self._Nfreqs = uvp.UVParameter('Nfreqs',
+                                       description='Number of frequency channels',
+                                       expected_type=int)
+        
+                                        expected_type=int)
+        self._Ntimes = uvp.UVParameter('Ntimes',
+                                       description='Number of times',
+                                       expected_type=int)
+
+        self._Nfreqs = uvp.UVParameter('Nfreqs',
+                                       description='Number of frequency channels',
+                                       expected_type=int)
+        desc = ('Number of antennas with data present (i.e. number of unique '
+                'entries in ant_array). May be smaller ' +
+                'than the number of antennas in the telescope')
+        self._Nants_data = uvp.UVParameter('Nants_data', description=desc,
+                                           expected_type=int)
+
+        desc = ('Number of antennas in the array. May be larger ' +
+                'than the number of antennas with data')
+        self._Nants_telescope = uvp.UVParameter('Nants_telescope',
+                                                description=desc,
+                                                expected_type=int)
+
+        
+        desc="Chi-Squares for each antenna gain solution."
+        
+        self._chi_squares=uvp.UVParameter('chi_squares',description=desc,
+                                          form=('Nants_data','NFreqs',
+                                                'NTimes','Njones'),
+                                          expected_type=float,required=False)
+        
+        self._noise_tavg=uvp.UVParameter('noise_tavg',
+                                         description='noise levels in uncalibrated'
+                                         'visibilities computed by taking differences'
+                                         'in frequency and median over'
+                                         ' all times',
+                                         form=('Nbls','NFreqs','Npols'),
+                                         expected_type=np.float,required=False)
+        
+        self._noise_favg=uvp.UVParameter('noise_favg',
+                                         description='noise levels in uncalibrated'
+                                         'visibilities computed by taking differences'
+                                         'in time and median over'
+                                         ' all frequency',
+                                         form=('Nblts','Npols'),
+                                         expected_type=np.float,required=False)
+
         
 
-
+        self._noise_tblavg=uvp.UVParameter('noise_tblavg',
+                                           description='noise levels in uncalibrated'
+                                           'visibilities computed by taking differences'
+                                           'in time and and taking median over frequency'
+                                           'baseline, polarization, and time',
+                                          form=('NFreqs'),
+                                          expected_type=np.float,required=False)
+        
+        
 class StefCalUVData():
     """
     Defines a class for performing stefcal on uvdata sets.
@@ -44,35 +108,21 @@ class StefCalUVData():
     
     def __init__(self,refant=0,n_phase_iter=5,
                  n_cycles=1,min_bl_per_ant=2,eps=1e-10,
-                 min_ant_times=1,trim_neff=False,spw=0):
-        self.id=uuid.uuid4()
+                 min_ant_times=1,trim_neff=False,spw=0,
+                 t_avg=1):
         self.model_vis=UVData()
         self.measured_vis=UVData()
         self.cal_flag_weights=CalFlagWeights(self.id)
         self.cal_solution=UVCal()
-        self.spw=spw
-        self._noise_tavg=uvp.UVParameter('noise_tavg',
-                                         description='noise levels in uncalibrated'
-                                         'visibilities computed by taking differences'
-                                         'in frequency and restricted average over'
-                                         ' all times',
-                                         form=('Nbls','NFreqs','Npols'),
-                                         expected_type=np.float)
-        self._noise_favg=uvp.UVParameter('noise_favg',
-                                         description='noise levels in uncalibrated'
-                                         'visibilities computed by taking differences'
-                                         'in time and restricted average over'
-                                         ' all frequency',
-                                         form=('Nblts','Npols'),
-                                         expected_type=np.float)
-        self.meta_params=StefCalMeta(refant,
+        self.meta_params=StefCalMeta(uuid.uuid4(),refant,
                                      n_phase_iter,
                                      n_cycles,
                                      min_bl_per_ant,
                                      eps,
                                      min_ant_times,
-                                     trim_neff,
-                                     self.id)
+                                     spw,
+                                     trim_neff,t_avg)
+
         
     def _compare_properties(self,property1,property2,compare_flags=False,compare_weights=False,compare_phase=False):
         """
@@ -206,56 +256,108 @@ class StefCalUVData():
         self.model_vis.read_mirad(modelname)
         self.measured_vis.read_miraid(dataname)
         
-    def _compute_noise(self,mode='AUTO'):
+    def _compute_noise(self,mode='TIME'):#,minmax_percentile=.05):
         """
         compute thermal noise levels for each baseline and frequency
         using adjacent time differencing and adjacent channel differencing.
         Args:
-             mode='AUTO','FREQ', or 'TIME' determines over which axis to compute
-             averages. while the other will be diffed if mode='AUTO' is selected, 
-             will perform the averaging over whichever 
-             axis has more samples. 
+             mode='FREQ', or 'TIME' determines over which axis to diff and compute
+             averages.
         """
-        assert mode in ['AUTO','TIME','FREQ']
-        if self.measured_vis.Nfreqs<=self.model_vis.Ntimes\
-           and mode=='AUTO':
-            mode='FREQ'
-        elif self.measured_vis.nFreqs>=self.model_vis.Ntimes\
-             and mode=='AUTO':
-            mode='TIME'
+        assert mode in ['TIME','FREQ','dTIMEmBL','dFREQmBL']
+
         if mode=='FREQ':
             #take diff in freq and average over freq
-            self.noise_favg=np.zeros((self.measured_vis.Nblts,self.measured_vis.Npols))
+            self.meta_params.noise_favg=np.zeros((self.measured_vis.Nblts,self.measured_vis.Npols))
             for pol in range(self.measured_vis.Npols):
                 for blt in range(self.measured_vis.Nblts):
                     data_select=self.measured_vis.data_array[blt,:,self.spw,pol].squeeze()
                     flag_select=self.cal_flag_weights.flag_array[blt,:,self.spw,pol].squeeze()
                     #only take diffs for adjacent channels,
-                    ndiffs=0
-                    for chan in range(1,self.measured_vis.Nfreq):
+                    mlist=np.array([])
+                    for chan in range(1,self.measured_vis.Nfreq,2):
                         if not(flag_select[chan]) and not(flag_select[chan-1]):
-                            self.noise_favg[blt,pol]+=np.abs(data_select[chan]-data_select[chan-1])**2.
-                            ndiffs+=1
-                    self.noise_favg[blt,pol]/=2*ndiffs
-        if mode=='TIME':
+                            mlist=np.append(mlist,np.abs(data_select[chan]-data_select[chan-1])**2.)
+                   # minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
+                   #self.noise_favg[blt,pol]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
+                   self.meta_params.noise_favg[blt,pol]=np.median(mlist)/(2.*np.log(2.))
+        elif mode=='TIME':
             #take diff in time and average over time
-            self.noise_tavg=np.zeros((self.measured_vis.NBls,self.measured_vis.NFreqs,self.Npols))
+            self.meta_params.noise_tavg=np.zeros((self.measured_vis.NBls,self.measured_vis.NFreqs,self.Npols))
             for pol in range(self.measured_vis.Npols):
-                for blnum in self.measured_vis.Nbls
+                for blnum in range(self.measured_vis.Nbls):
                     bl_selection=self.baseline_array==self.baseline_array[blnum]
                     ndiffs=0
                     for chan in range(self.vis_measured.NFreqs):
                         data_select=self.measured_vis.data_array[bl_selection,self.spw,chan,pol]
                         flag_select=self.cal_flag_weights.flag_array[bl_selection,self.spw,chan,pol]
                         #only take diffs for adjacent channels,
-                        ndiffs=0
-                        for tnum in range(1,self.measured.NTimes):
+                        mlist=np.array([])
+                        for tnum in range(1,self.measured_vis.NTimes,2):
                             if not(flag_select[tnum]) and not(flag_select[tnum-1]):
-                                self.noise_tavg[blnum,chan,pol]+=\
-                                np.abs(data_select[tnum]-data_select[tnum-1])**2.
-                                ndiffs+=1
-                        self.noise_tavg[blnum,chan,pol]/=(2.*ndiffs)
-                                
+                                mlist=np.append(mlist, np.abs(data_select[tnum]-data_select[tnum-1])**2.)
+                        #minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
+                        #self.noise_tavg[blnum,chan,pol]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
+                        self.meta_params.noise_tavg[blnum,chan,pol]=np.median(mlist)/(2.*np.log(2.))
+        elif mode=='dTIMEmTIMEBL':
+            #take diff in time and average in time,baselines,and pols; good for measurement sets
+            #with a small number of time samples.
+            self.meta_params.noise_tblavg=np.zeros((self.measured_vis.Nfreqs))
+            for chan in range(self.measured_vis.NFreqs):
+                mlist=([])
+                for pol in range(self.measured_vis.Npols):
+                    for blnum in range(self.measured_vis.Nbls):
+                        bl_selection=self.baseline_array==self.baseline_array[blnum]
+                        data_select=self.measured_vis.data_array[bl_selection,self.spw,chan,pol]
+                        flag_select=self.measured_vis.flag_array[bl_selection,self.spw,chan,pol]
+                        for tnum in range(1,self.measured_vis.NTimes,2):
+                            if not(flag_select[tnum]) and not(flag_select[tnum-1]):
+                                mlist=np.append(mlist,np.abs(data_select[tnum]-data_select[tnum-1])**2.)
+                #minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
+                #self.noise_tblavg[chan]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
+                self.meta_params.noise_tblavg[chan]=np.median(mlist)/(2.*np.log(2.))   
+                        
+    def _compute_chiSQ(self,mode='dTIMEmTIMEBL'):
+        """
+        Compute a chi-square/DoF for each antenna gain solution by evaluationg
+        \chi^2_i = \sum_{j,t} |v_{ij}-y_{i-j}g_i^*g_j |^2/\sigma_{ij}^2
+        where \sigma_{ij}^2 at each frequency and baseline is estimated 
+        """
+        assert mode in ['TIME','dFREQmBL']
+        self._compute_noise(self,mode)
+        #compute chi-squared values for each antenna, pol, and time.
+        for pol in range(self.measured_vis.Njones):
+            for chan in range(self.measured_vis.NFreqs):
+                for antnum in self.measured_vis.antenna_numbers:
+                    for tnum in self.measured_vis.antenna_numbers:
+                        selection=np.logical_and(self.measured_vis.ant_1_array==\
+                                                 antnum1,
+                                                 self.measured_vis.time_array==\
+                                                 self.uvcal.time_array[tnum])
+                        flag_select=self.measured_vis.flag_array[selection,self.meta_params.spw
+                                                                 chan,pol]
+                        data_select=self.measured_vis.data_array[selection,self.meta_params.spw,
+                                                                 chan,pol][np.invert(flag_select)]
+                        model_select=self.measured_vis.data_array[selection,self.meta_params.spw,
+                                                                  chan,pol][np.invert(flag_select)]
+                        ant2_select=self.ant2_array[selection][np.invert(flag_select)]
+                        gain_select=self.uvcal.gain_array[ant2_select,
+                                                          self.meta_params.spw,
+                                                          chan,
+                                                          tnum,
+                                                          pol]
+                        this_gain=self.uvcal.gain-array[antnum,
+                                                        self.meta_params.spw,
+                                                        chan,
+                                                        tnum,
+                                                        pol]
+                        self.meta_params.chi_squares[antnum,chan,tnum,pol]=\
+                        np.sum(np.abs(dat_select-this_gain*gain_select*model_select)**2.)/self.meta_params.noise_tblavg[chan]
+            
+            
+                    
+                                                 
+    
     def _read_files(self,data,mode,flagweights_fromdata,flagweightsfile=None,model=None):
         '''
         read in all files including data,model,calibration weights
@@ -339,11 +441,78 @@ class StefCalUVData():
                          flagweights_fromdata=flagweights_fromdata,
                          flagweightsfile=flagweightsfile,
                          model=uvfitsmodel)
-    
+
+    def _blt_list_2_matrix(self,blt_list,t_steps,hermit=True):
+        """
+        convert a baseline-time ordered list into a 
+        NTimes x NAnt x NAnt matrix 
+        Args:
+            blt_list, baseline-time ordered numpy array 
+            t_steps, integer time-steps defining NTimes axis. 
+            hermit, boolean, set true if output[a,b]=conj(output[b,a])
+        """
+        timeList=np.unique(self.vis_measured.time_array)
+        antList=np.unique(self.vis_measured.ant1_array)
+        nT=len(t_steps)
+        nAnt=len(antList)
+        output=np.empty((nT,nAnt,nAnt),dtype=bl_list.dtype)
+        for t_step in range(nT):
+            selection=self.vis_measured.time_array==timeList[t_step]
+            bl_list=blt_list[selection]
+            for antNum1 in range(nAnt):
+                ant1=antList[antNum1]
+                for antNum2 in range(antNum1):
+                    ant2=antList[antNum2]
+                    selection=np.logical_and(self.vis_measured.time_array\
+                                             ==timeList[t_step],
+                                             np.logical_and(self.vis_measured.ant1_array==ant1,
+                                                            self.vis_measured.ant2_array==ant2))
+                    output[antNum1,antNum2]=blt_list[selection]
+                    if hermit:
+                        output[antNum1,antNum2]=np.conj(blt_list[selection])
+                    else:
+                        output[antNum1,antNum2]=blt_list[selection]
+        return output
+                                 
+                
+            
+
+        
     def stefcalibrate(self,parallelized=False):
         '''
         Run stefcal
         Args: 
             parallilized, choose this if you want calibration to be parallelized across frequency channels
         '''
-        
+        #loop through polarization
+        for pol in range(self.measured_vis.Njones):
+            #for each channel and time-averaging step, 
+            for chan in range(self.measured_vis.NFreqs):
+                nsteps=int(np.ceil(self.measured_vis.NTimes/self.meta_params.t_avg))
+                for tstep in range(nsteps):
+                    t_steps=range((tstep-1)*t_avg,np.min([test*t_avg,
+                                                          self.measured_vis.NTimes]))
+                    data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
+                    model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
+                    weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
+                    flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=False)
+                    ant_flags,
+                    flag_matrix,
+                    niter,
+                    gains=stefcal.stefcal_scaler(data_mat,model_mat,
+                                                 weights_mat,
+                                                 flags_mat,
+                                                 self.meta_params.refant,
+                                                 self.meta_params.n_phase_iter,
+                                                 self.meta_params.n_cycles,
+                                                 self.meta_params.min_bl_per_ant,
+                                                 self.meta_params.eps,
+                                                 self.meta_params.min_ant_times,
+                                                 self.meta_params.trim_neff)
+                    self.uvcal.gain_array[:,self.meta_params.spw,chan,t_steps,pol]=gains
+                    self.uvcal.flag_array[:,self.meta_params,spw,chan,t_steps,pol]=ant_flags
+                    self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol]=np.logical_or(flag_matrix,self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol])
+                    self.meta_params.iterations[chan,pol,:]=niter
+                    
+                    #get data, model, weights, flags
+                

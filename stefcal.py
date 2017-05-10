@@ -72,7 +72,7 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
                 
 
     
-def stefcal_channel(data_matrix,model_matrix,weights_matrix,flag_matrix,
+def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     refant=0,n_phase_iter=5,n_cycles=1,min_bl_per_ant=2,
                     eps=1e-10,min_ant_times=1,trim_neff=False):
     '''
