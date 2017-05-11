@@ -184,8 +184,9 @@ class StefcalUVData():
              mode='FREQ', or 'TIME' determines over which axis to diff and compute
              averages.
         """
-        assert mode in ['TIME','FREQ','dTIMEmBL','dFREQmBL']
-
+        #assert mode in ['TIME','FREQ','dTIMEmBL','dFREQmBL']
+        assert mode == 'dTIMEmTIMEBL'
+        """
         if mode=='FREQ':
             #take diff in freq and average over freq
             self.meta_params.noise_favg=np.zeros((self.measured_vis.Nblts,self.measured_vis.Njones))
@@ -219,7 +220,8 @@ class StefcalUVData():
                         #minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
                         #self.noise_tavg[blnum,chan,pol]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
                         self.meta_params.noise_tavg[blnum,chan,pol]=np.median(mlist)/(2.*np.log(2.))
-        elif mode=='dTIMEmTIMEBL':
+        """
+        if mode=='dTIMEmTIMEBL':
             #take diff in time and average in time,baselines,and pols; good for measurement sets
             #with a small number of time samples.
             self.meta_params.noise_tblavg=np.zeros((self.measured_vis.Nfreqs))
@@ -243,7 +245,7 @@ class StefcalUVData():
         \chi^2_i = \sum_{j,t} |v_{ij}-y_{i-j}g_i^*g_j |^2/\sigma_{ij}^2
         where \sigma_{ij}^2 at each frequency and baseline is estimated 
         """
-        assert mode in ['TIME','dFREQmBL']
+        #assert mode in ['TIME','dFREQmBL']
         self._compute_noise(self,mode)
         #compute chi-squared values for each antenna, pol, and time.
         for pol in range(self.measured_vis.Njones):
@@ -254,12 +256,15 @@ class StefcalUVData():
                                                  antnum1,
                                                  self.measured_vis.time_array==\
                                                  self.uvcal.time_array[tnum])
-                        flag_select=self.measured_vis.flag_array[selection,self.meta_params.spw
+                        flag_select=self.measured_vis.flag_array[selection,self.meta_params.spw,
                                                                  chan,pol]
                         data_select=self.measured_vis.data_array[selection,self.meta_params.spw,
                                                                  chan,pol][np.invert(flag_select)]
                         model_select=self.measured_vis.data_array[selection,self.meta_params.spw,
                                                                   chan,pol][np.invert(flag_select)]
+                        weight_select=self.cal_flag_weights.weights_array[selection,self.meta_params.spw,
+                                                            chan,pol]
+                        weight_select/=weight_select.sum()
                         ant2_select=self.ant2_array[selection][np.invert(flag_select)]
                         gain_select=self.uvcal.gain_array[ant2_select,
                                                           self.meta_params.spw,
@@ -271,8 +276,10 @@ class StefcalUVData():
                                                         chan,
                                                         tnum,
                                                         pol]
-                        self.meta_params.chi_squares[antnum,chan,tnum,pol]=\
-                        np.sum(np.abs(dat_select-this_gain*gain_select*model_select)**2.)/self.meta_params.noise_tblavg[chan]
+                        self.meta_params.chi_square_per_ant[antnum,chan,tnum,pol]=\
+                        np.sum(np.abs((data_select-this_gain*gain_select*model_select)*weight_select)**2.)/self.meta_params.noise_tblavg[chan]
+                        neff=np.sum(weights_select)/np.max(weights_select)
+                        self.meta_params.dof_per_ant[antnum,chan,tnum,pol]=neff-1
     
     def _read_files(self,data,mode,flagweights_fromdata,flagweightsfile=None,model=None):
         '''
@@ -303,9 +310,35 @@ class StefcalUVData():
             assert flagweightsfile
             self.cal_flag_weights.from_file(flagweightsfile)
             self.meta_params.flag_weights_file=flagweightsfile
+        
         self.meta_params.data_file=data
         self._check_consistency()
+        #compute noise matrices
         self._compute_noise()
+        #initializes uvcal object properties
+        self.uvcal.Njones=self.measured_vis.Njones
+        self.uvcal.Nfreqs=self.measured_vis.Nfreqs
+        self.uvcal.Ntimes=self.measured_vis.Ntimes
+        self.uvcal.Nspws=self.measured_vis.Nspws
+        self.uvcal.time_range=self.measured_vis.time_range
+        self.uvcal.telescope_name=self.measured_vis.telescope_name
+        self.uvcal.Nants_data=self.measured_vis.Nants_data
+        self.uvcal.Nants_telescope=self.measured_vis.Nants_telescope
+        self.uvcal.ant_array=self.measured_vis.ant_array
+        self.uvcal.antenna_names=self.measured_vis.antenna_nams
+        self.uvcal.antenna_numbers=self.measured_vis.antenna_numbers
+        self.uvcal.freq_array=self.measured_vis.freq_array
+        self.uvcal.channel_width=self.measured_vis.channel_width
+        self.uvcal.jones_array=self.measured_vis.jones_array
+        self.uvcal.time_array=np.unique(self.measured_vis.time_array)
+        self.uvcal.integration_time=self.measured_vis.integration_time
+        self.uvcal.x_orientation='east' #stefcal is going to treat x as east.
+        self.uvcal.cal_type='gain'
+        self._git_origin_cal='calibrated with stefcal_uvdata version %s'%self.meta_params.stefcal_version_str\
+                              'with run id %s'%self.meta_params.id
+        
+        
+        
 
         
     def from_ms(self,msfile,flagweights_fromdata,flagweightsfile=None):
@@ -433,6 +466,7 @@ class StefcalUVData():
                     self.uvcal.flag_array[:,self.meta_params,spw,chan,t_steps,pol]=ant_flags
                     self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol]=np.logical_or(flag_matrix,self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol])
                     self.meta_params.iterations[chan,pol,:]=niter
-                    
-                    #get data, model, weights, flags
-                
+            #compute chi-squares
+            self._compute_chiSQ()
+            #get data, model, weights, flags
+            self.quality_array[:,self.meta_params.spw,chan,t_steps,pol]=_compute_chiSQ

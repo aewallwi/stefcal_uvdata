@@ -1,3 +1,4 @@
+import version as stfversion
 
 class StefcalMeta():
     """
@@ -104,26 +105,33 @@ class StefcalMeta():
         
         desc="Chi-Squares for each antenna gain solution."
         
-        self._chi_squares=uvp.UVParameter('chi_squares',description=desc,
+        self._chi_square_per_ant=uvp.UVParameter('chi_square_per_ant',description=desc,
+                                                 form=('Nants_data','Nfreqs',
+                                                       'Ntimes','Njones'),
+                                                 expected_type=float,required=False)
+        
+        desc='keeps track of degrees of freedom per gain solution.'
+        self._dof_per_ant=uvp.UVParameter('dof_per_ant',description=desc,
                                           form=('Nants_data','Nfreqs',
                                                 'Ntimes','Njones'),
-                                          expected_type=float,required=False)
+                                          expected_type=float)
+                    
         
-        self._noise_tavg=uvp.UVParameter('noise_tavg',
-                                         description='noise levels in uncalibrated'
-                                         'visibilities computed by taking differences'
-                                         'in frequency and median over'
-                                         ' all times',
-                                         form=('Nbls','Nfreqs','Njones'),
-                                         expected_type=np.float,required=False)
+        #self._noise_tavg=uvp.UVParameter('noise_tavg',
+        #                                 description='noise levels in uncalibrated'
+        #                                 'visibilities computed by taking differences'
+        #                                 'in frequency and median over'
+        #                                 ' all times',
+        #                                 form=('Nbls','Nfreqs','Njones'),
+        #                                 expected_type=np.float,required=False)
         
-        self._noise_favg=uvp.UVParameter('noise_favg',
-                                         description='noise levels in uncalibrated'
-                                         'visibilities computed by taking differences'
-                                         'in time and median over'
-                                         ' all frequency',
-                                         form=('Nblts','Njones'),
-                                         expected_type=np.float,required=False)
+        #self._noise_favg=uvp.UVParameter('noise_favg',
+        #                                 description='noise levels in uncalibrated'
+        #                                 'visibilities computed by taking differences'
+        #                                 'in time and median over'
+        #                                 ' all frequency',
+        #                                 form=('Nblts','Njones'),
+        #                                 expected_type=np.float,required=False)
 
         
 
@@ -134,4 +142,7 @@ class StefcalMeta():
                                            'baseline, polarization, and time',
                                           form=('Nfreqs'),
                                           expected_type=np.float,required=False)
-        
+        self.stefcal_version_str+=(' Git origin: ' + stfversion.git.origin +
+                                   '. Git hash: ' + stfversion.get_hash +
+                                   '. Git branch: ' + stfversion.git_branch+
+                                   '. Git description: ' + stfversion.get_description)
