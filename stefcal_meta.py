@@ -1,5 +1,7 @@
-import version as stfversion
-
+import pyuvdata.version as stfversion
+import pickle
+import numpy as np
+import copy
 class StefcalMeta():
     """
     Defines a container class for stefcal meta parameters 
@@ -64,11 +66,6 @@ class StefcalMeta():
                                     description=desc,
                                     expected_type=int)
 
-        self._refant=uvp.UVParameter('refant',
-                                     description='Reference antenna number',
-                                     expected_type=int)
-
-        
         self._n_ycles=uvp.UVParameter('n_cycles',
                                       description='Number of cycles of stefcal performed',
                                       expected_type=int)
@@ -146,3 +143,43 @@ class StefcalMeta():
                                    '. Git hash: ' + stfversion.get_hash +
                                    '. Git branch: ' + stfversion.git_branch+
                                    '. Git description: ' + stfversion.get_description)
+
+        def to_file(self,datafile,clobber=False):
+            """
+            write meta object to a file using pickle
+            """
+            if clobber or not(os.path.exists(datafile)):
+                pickle.dump(self,open(datafile,"wb"))
+            else:
+                print("%s already exists. Use clobber=True to overwrite"%datafile)
+                
+        def from_file(self,datafile):
+            """
+            read meta object from pickled file
+            """
+            data=pickle.load(open(datafile,"rb"))
+            self.refant=copy.copy(data.refant)
+            self.n_phase_iter=copy.copy(data.n_phase_iter)
+            self.min_bl_per_ant=copy.copy(data.min_bl_per_ant)
+            self.eps=copy.copy(data.eps)
+            self.min_ant_times=copy.copy(data.min_ant_times)
+            self.trim_neff=copy.copy(data.trim_neff)
+            self.id=copy.copy(data.id)
+            self.flag_weights_file=copy.copy(data.flag_weights_file)
+            self.model_file=copy.copy(data.model_file)
+            self.measurement_file=copy.copy(data.measurement_file)
+            self.model_file=copy.copy(data.model_file)
+            self.spw=copy.copy(data.spw)
+            self.t_avg=copy.copy(data.t_avg)
+            self.n_cycles=copy.copy(data.n_cycles)
+            self.Niterations=copy.copy(data.Niterations)
+            self.Nfreqs=copy.copy(data.Nfreqs)
+            self.Ntimes=copy.copy(data.Ntimes)
+            self.Nfreqs=copy.copy(data.Nfreqs)
+            self.Nants_data=copy.copy(data.Nants_data)
+            self.Nants_telescope=copy.copy(data.Nants_telescope)
+            self.chi_square_per_ant=copy.copy(data.chi_square_per_ant)
+            self.dof_per_ant=copy.copy(data.dof_per_ant)
+            self.noise_tblavg=copy.copy(data.noise_tblavg)
+            self.stefcal_version_str=copy.copy(data.stefcal_version_str)
+            del(data)

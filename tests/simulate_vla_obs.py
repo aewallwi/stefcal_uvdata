@@ -17,7 +17,7 @@ cl.done()
 
 default('simobserve')
 integration='2s'
-project="point_source_sim"
+project="../data/point_source_sim"
 complist="point.cl"
 compwidth="400MHz"
 direction=phase_center

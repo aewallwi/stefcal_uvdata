@@ -171,12 +171,12 @@ class CalFlagWeights():
                                          expected_type=np.float,required=False)
       
             
-        def from_file(self,datafile,mode='UVDATA'):
+        def from_file(self,datafile,mode='CFWS'):
             '''
             initialize flagweights object from calFlagWeights file
             args: name of data file to read in
             '''
-            assert mode in ['UVDATA','CALFLAGWEIGHTS']:
+            assert mode in ['UVDATA','CFWS']:
             if mode=='CALFLAGWEIGHTS':
                 data=pickle.load(open(datafile,"rb"))
             self.Nfreqs=copy.copy(data.Nfreqs)

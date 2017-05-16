@@ -3,10 +3,15 @@ from pyuvdata import UVCal
 import pyuvdata.parameter as uvp
 from calFlagWeights import CalFlagWeights
 import stefcal
+import pickle
 from stefcal_meta import StefcalMeta
 import uuid
 
-        
+
+#************************************************************
+#Need to store state IDs for different times
+#************************************************************
+
 class StefcalUVData():
     """
     Defines a class for performing stefcal on uvdata sets.
@@ -134,7 +139,7 @@ class StefcalUVData():
         if not(self._compare_properties(self.model_vis,self.measured_vis,
                                         compare_flags=True,
                                         compare_weights=True,
-                                        compare-phase=True,
+                                        compare_phase=True,
                                         compare_ant_positions=True)):
             raise ValueError("model_vis not consistent with measured_vis")
         
@@ -334,8 +339,8 @@ class StefcalUVData():
         self.uvcal.integration_time=self.measured_vis.integration_time
         self.uvcal.x_orientation='east' #stefcal is going to treat x as east.
         self.uvcal.cal_type='gain'
-        self._git_origin_cal='calibrated with stefcal_uvdata version %s'%self.meta_params.stefcal_version_str\
-                              'with run id %s'%self.meta_params.id
+        self.uvcal.git_origin_cal='calibrated with stefcal_uvdata version %s with run id %s'\
+                                   %(self.meta_params.stefcal_version_str,self.meta_params.id)
         
         
         
@@ -426,8 +431,32 @@ class StefcalUVData():
                     else:
                         output[antNum1,antNum2]=blt_list[selection]
         return output
-                                 
-                
+
+    #Function to reinitialize from files and id
+    
+    
+    def save_state(self,output_root,clobber=False):
+        """
+        saves cal_flag_weights and meta information to .pkl files. 
+        allows for reinitialization of stefcal at any future time
+        """
+        self.meta_params.to_file(output_root+'_meta',clobber)
+        self.cal_flag_weights.to_file(output_root+'_cfws',clobber)
+        #save calibration solution
+        if clobber:
+            pickle.dump(self.uvcal,open(output_root+'_'+self.stefcal_meta.id+'_cal',"wb"))
+        
+
+    def load_state(self,input_root):
+        """
+        load state from meta and cal flag weights file. 
+        """
+        self.meta_params.from_file(input_root+'_meta')
+        self.cal_flag_weights.from_file(input_root+'_cfws',mode='CFWS')
+        self.uvcal=pickle.load(open(input_root+'_'+self.stefcal_meta.id+'_cal',"rb"))
+                    
+                               
+        
             
 
         
