@@ -1,7 +1,9 @@
 import pyuvdata.version as stfversion
+import pyuvdata.parameter as uvp
 import pickle
 import numpy as np
 import copy
+import os
 class StefcalMeta():
     """
     Defines a container class for stefcal meta parameters 
@@ -9,12 +11,16 @@ class StefcalMeta():
     calculations along with filepaths
     to data, model, and flag_weights files. 
     """
-    def __init__()#self,id,refant=0,n_phase_iter=5,
+    def __init__(self):#self,id,refant=0,n_phase_iter=5,
                  #n_cycles=1,min_bl_per_ant=2,eps=1e-10,
                  #min_ant_times=1,trim_neff=False,spw=0,
                  #t_avg=1):
 
 
+        desc='Njones'
+        self._Njones=uvp.UVParameter('Njones',description=desc,
+                                     expected_type=int)
+        
         desc='Reference antenna'
         self._refant=uvp.UVParameter('refant',description=desc,
                                      expected_type=int)
@@ -40,7 +46,7 @@ class StefcalMeta():
                                         expected_type=bool)
         
         desc='unique identifier linking meta-data to calibration solutions and'
-             'flag weights file'
+        'flag weights file'
         self._id=uvp.UVParameter('id',description=desc,
                                  expected_type=str)
         
@@ -66,20 +72,15 @@ class StefcalMeta():
                                     description=desc,
                                     expected_type=int)
 
-        self._n_ycles=uvp.UVParameter('n_cycles',
+        self._n_cycles=uvp.UVParameter('n_cycles',
                                       description='Number of cycles of stefcal performed',
                                       expected_type=int)
         
-        self._Niterations=uvp.UVParameter('iterations',
-                                         description='Number of iterations of stefcal performed',
-                                         form=('Ncycles','Nfreqs','Njones')
-                                         expected_type=int)
+        self._Niterations=uvp.UVParameter('Niterations',
+                                          description='Number of iterations of stefcal performed',
+                                          form=('n_cycles','Nfreqs','Njones'),
+                                          expected_type=int)
         
-        self._Nfreqs = uvp.UVParameter('Nfreqs',
-                                       description='Number of frequency channels',
-                                       expected_type=int)
-        
-                                        expected_type=int)
         self._Ntimes = uvp.UVParameter('Ntimes',
                                        description='Number of times',
                                        expected_type=int)
@@ -99,7 +100,6 @@ class StefcalMeta():
                                                 description=desc,
                                                 expected_type=int)
 
-        
         desc="Chi-Squares for each antenna gain solution."
         
         self._chi_square_per_ant=uvp.UVParameter('chi_square_per_ant',description=desc,
@@ -139,47 +139,47 @@ class StefcalMeta():
                                            'baseline, polarization, and time',
                                           form=('Nfreqs'),
                                           expected_type=np.float,required=False)
-        self.stefcal_version_str+=(' Git origin: ' + stfversion.git.origin +
-                                   '. Git hash: ' + stfversion.get_hash +
+        self.stefcal_version_str=(' Git origin: ' + stfversion.git_origin +
+                                   '. Git hash: ' + stfversion.git_hash +
                                    '. Git branch: ' + stfversion.git_branch+
-                                   '. Git description: ' + stfversion.get_description)
+                                   '. Git description: ' + stfversion.git_description)
 
-        def to_file(self,datafile,clobber=False):
-            """
-            write meta object to a file using pickle
-            """
-            if clobber or not(os.path.exists(datafile)):
-                pickle.dump(self,open(datafile,"wb"))
-            else:
-                print("%s already exists. Use clobber=True to overwrite"%datafile)
+    def to_file(self,datafile,clobber=False):
+        """
+        write meta object to a file using pickle
+        """
+        if clobber or not(os.path.exists(datafile)):
+            pickle.dump(self,open(datafile,"wb"))
+        else:
+            print("%s already exists. Use clobber=True to overwrite"%datafile)
                 
-        def from_file(self,datafile):
-            """
-            read meta object from pickled file
-            """
-            data=pickle.load(open(datafile,"rb"))
-            self.refant=copy.copy(data.refant)
-            self.n_phase_iter=copy.copy(data.n_phase_iter)
-            self.min_bl_per_ant=copy.copy(data.min_bl_per_ant)
-            self.eps=copy.copy(data.eps)
-            self.min_ant_times=copy.copy(data.min_ant_times)
-            self.trim_neff=copy.copy(data.trim_neff)
-            self.id=copy.copy(data.id)
-            self.flag_weights_file=copy.copy(data.flag_weights_file)
-            self.model_file=copy.copy(data.model_file)
-            self.measurement_file=copy.copy(data.measurement_file)
-            self.model_file=copy.copy(data.model_file)
-            self.spw=copy.copy(data.spw)
-            self.t_avg=copy.copy(data.t_avg)
-            self.n_cycles=copy.copy(data.n_cycles)
-            self.Niterations=copy.copy(data.Niterations)
-            self.Nfreqs=copy.copy(data.Nfreqs)
-            self.Ntimes=copy.copy(data.Ntimes)
-            self.Nfreqs=copy.copy(data.Nfreqs)
-            self.Nants_data=copy.copy(data.Nants_data)
-            self.Nants_telescope=copy.copy(data.Nants_telescope)
-            self.chi_square_per_ant=copy.copy(data.chi_square_per_ant)
-            self.dof_per_ant=copy.copy(data.dof_per_ant)
-            self.noise_tblavg=copy.copy(data.noise_tblavg)
-            self.stefcal_version_str=copy.copy(data.stefcal_version_str)
-            del(data)
+    def from_file(self,datafile):
+        """
+        read meta object from pickled file
+        """
+        data=pickle.load(open(datafile,"rb"))
+        self.refant=copy.copy(data.refant)
+        self.n_phase_iter=copy.copy(data.n_phase_iter)
+        self.min_bl_per_ant=copy.copy(data.min_bl_per_ant)
+        self.eps=copy.copy(data.eps)
+        self.min_ant_times=copy.copy(data.min_ant_times)
+        self.trim_neff=copy.copy(data.trim_neff)
+        self.id=copy.copy(data.id)
+        self.flag_weights_file=copy.copy(data.flag_weights_file)
+        self.model_file=copy.copy(data.model_file)
+        self.data_file=copy.copy(data.data_file)
+        self.model_file=copy.copy(data.model_file)
+        self.spw=copy.copy(data.spw)
+        self.t_avg=copy.copy(data.t_avg)
+        self.n_cycles=copy.copy(data.n_cycles)
+        self.Niterations=copy.copy(data.Niterations)
+        self.Nfreqs=copy.copy(data.Nfreqs)
+        self.Ntimes=copy.copy(data.Ntimes)
+        self.Nfreqs=copy.copy(data.Nfreqs)
+        self.Nants_data=copy.copy(data.Nants_data)
+        self.Nants_telescope=copy.copy(data.Nants_telescope)
+        self.chi_square_per_ant=copy.copy(data.chi_square_per_ant)
+        self.dof_per_ant=copy.copy(data.dof_per_ant)
+        self.noise_tblavg=copy.copy(data.noise_tblavg)
+        self.stefcal_version_str=copy.copy(data.stefcal_version_str)
+        del(data)

@@ -39,7 +39,7 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
         flagsMatrix_c=np.empty(weights_matrix_c.shape,dtype=bool);flagsMatrix_c[:]=False
     else:
         assert flagsMatrix.dtype==bool
-        assert flagsMatrix.shape=weights_matrix.shape
+        assert flagsMatrix.shape==weights_matrix.shape
         flagsMatrix_c=copy.copy(flagsMatrix)
         weights_matrix_c[flagsMatrix_c]=0.
     #flagsMatrixL is a list of visibility flags
