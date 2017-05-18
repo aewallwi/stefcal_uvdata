@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+DEBUG=True
 #from numba import jit
 
 
@@ -103,22 +104,39 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
         ant_flags, Nant np array of boolean flags indicating antennas flagged
         flag_matrix, Ntime x Nant x Nant np array of boolean flags indicating 
                    baselines flagged. 
-        niter, ncycles np array of integers. Denotes number of iterations 
+        niter, n_cycles np array of integers. Denotes number of iterations 
                that were evaluated in each cycle. 
         gains, nAnt numpy array of complex numbers with estimated gains
     '''
     #start with type checks
-    assert weights_matrix.dtype==float
-    assert data_matrix.dtype==complex
-    assert model_matrix.dtype==complex
-    assert flag_matrix.dtype==bool
+    if DEBUG:
+        print('weights_matrix.dtype='+str(weights_matrix.dtype))
+        print('data_matrix.dtype='+str(data_matrix.dtype))
+        print('model_matrix.dtype='+str(model_matrix.dtype))
+        print('flag_matrix.dtype='+str(flag_matrix.dtype))
+        print('weights_matrix.shape='+str(weights_matrix.shape))
+        print('data_matrix.shape='+str(data_matrix.shape))
+        print('model_matrix.shape='+str(model_matrix.shape))
+        print('flag_matrix.shape='+str(flag_matrix.shape))
+
+        
+    assert weights_matrix.dtype==np.float64
+    assert data_matrix.dtype==np.complex64
+    assert model_matrix.dtype==np.complex64
+    assert flag_matrix.dtype==np.bool
+    assert weights_matrix.shape==data_matrix.shape
+    assert model_matrix.shape==weights_matrix.shape
+    assert flag_matrix.shape==model_matrix.shape
+    
     nAnt=data_matrix.shape[1]
     nTimes=data_matrix.shape[0]
     #start by flagging antennas with insufficient baselines
     weights_matrix=copy.copy(weights_matrix)
     weights_matrix[flag_matrix]=0.
     ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
-    
+
+    if DEBUG:
+        print('ant_flags.shape='+str(ant_flags.shape))
     for nt in range(nTimes):
         ant_flags[nt][compute_neff(weights_matrix)<min_bl_per_ant]=True
     
@@ -127,25 +145,29 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             _,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
                                                                          weights_matrix[nt],
                                                                          min_bl_per_ant)
-            
+    ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
+    for m in range(nAnt):
+        ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])>min_ant_times
+    antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#the numbers of antennas not flagged
     #now run stefcal
     _eps=1.
-    niter=np.zeros(ncycles)
-    gnew=0.
-    antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags)]#the numbers of antennas not flagged
+    niter=np.zeros(n_cycles)
+    gnew=0
+    if DEBUG:
+        print('ant_flags shape='+str(ant_flags.shape))
     nAntG=len(antNumbers)
     gains=np.ones(nAnt,dtype=complex)
     gainsG=np.ones(nAntG,dtype=complex)
     gainsG_temp=np.ones_like(gainsG)
-    data_matrixG==np.zeros((nTimes,nAntG,nAntG),dtype=complex)
+    data_matrixG=np.zeros((nTimes,nAntG,nAntG),dtype=complex)
     model_matrixG=np.zeros_like(data_matrixG)
     weights_matrixG=np.zeros((nTimes,nAntG,nAntG),dtype=float)
     gNumerator=np.zeros_like(gains)
     gDenominator=np.zeros_like(gains)
     gnew=np.zeros_like(gains)
     #initialize matrices
-    for m in range(nAntG):
-        for n in range(nAntG):
+    for n in range(nAntG):
+        for m in range(n):
             data_matrixG[:,m,n]=data_matrix[:,antNumbers[m],antNumbers[n]]
             data_matrixG[:,n,m]=data_matrix[:,antNumbers[n],antNumbers[m]]
             model_matrixG[:,m,n]=model_matrix[:,antNumbers[m],antNumbers[n]]
@@ -153,7 +175,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             weights_matrixG[:,m,n]=weights_matrix[:,antNumbers[m],antNumbers[n]]
             weights_matrixG[:,n,m]=weights_matrix[:,antNumbers[n],antNumbers[m]]
     #run stefcal cycles
-    for cycle in range(ncycles):
+    for cycle in range(n_cycles):
         gainsG_temp[:]=1.
         gainsG[:]=1.
         while _eps>eps:
@@ -163,7 +185,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             for nt in range(nTimes):
                 zmat=np.diag(np.conj(gainsG)).dot(model_matrixG[nt])
                 zmat_w=np.diag(np.conj(gainsG)).dot(model_matrixG[nt]*weights_matrixG[nt])
-                gNumerater+=np.sum(np.conj(zmat_w)*data_matrixG[nt],axis=0)
+                gNumerator+=np.sum(np.conj(zmat_w)*data_matrixG[nt],axis=0)
                 gDenominator+=np.sum(np.conj(zmat_w)*zmat,axis=0)
             gainsG=gNumerator/gDenominator
             if(niter[cycle]<n_phase_iter):
@@ -172,15 +194,16 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             gainsG*=np.conj(gainsG[refant])/np.abs(gainsG[refant])
             _eps=np.abs(gainsG-gainsG_temp).max()
             niter[cycle]+=1.
-        for m in range(nAntG):
-            gains[antNumbers[m]]*=gainsG[m]
-            for n in range(m):
-                data_matrixG[m,n]/=(gainsG[n]*np.conj(gainsG[m]))
-                data_matrixG[n,m]/=(gainsG[m]*np.conj(gainsG[n]))
-    ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
-    for m in range(nAnt):
-        ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])>min_ant_times
-    return ant_flags,flag_matrix,niter,gains
+        if DEBUG:
+            print('data_matrixG.shape='+str(data_matrixG.shape))
+            print('gainsG.shape='+str(gainsG.shape))
+        for nt in range(nTimes):
+            for m in range(nAntG):
+                gains[antNumbers[m]]*=gainsG[m]
+                for n in range(m):
+                    data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
+                    data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
+    return ant_flags,ant_flags_combined,niter,gains
                 
     
         

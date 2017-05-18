@@ -16,7 +16,9 @@ class StefcalMeta():
                  #min_ant_times=1,trim_neff=False,spw=0,
                  #t_avg=1):
 
-
+        desc='Number of different time steps in calibration'
+        self._Ntime_steps=uvp.UVParameter('Ntime_steps',description=desc,
+                                          expected_type=int)
         desc='Njones'
         self._Njones=uvp.UVParameter('Njones',description=desc,
                                      expected_type=int)
@@ -78,7 +80,7 @@ class StefcalMeta():
         
         self._Niterations=uvp.UVParameter('Niterations',
                                           description='Number of iterations of stefcal performed',
-                                          form=('n_cycles','Nfreqs','Njones'),
+                                          form=('Ntime_steps,n_cycles','Nfreqs','Njones'),
                                           expected_type=int)
         
         self._Ntimes = uvp.UVParameter('Ntimes',
@@ -182,4 +184,5 @@ class StefcalMeta():
         self.dof_per_ant=copy.copy(data.dof_per_ant)
         self.noise_tblavg=copy.copy(data.noise_tblavg)
         self.stefcal_version_str=copy.copy(data.stefcal_version_str)
+        self.Ntime_steps=copy.copy(data.Ntime_steps)
         del(data)

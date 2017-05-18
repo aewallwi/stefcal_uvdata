@@ -1,3 +1,4 @@
+DEBUG=True
 from pyuvdata import UVData
 import numpy as np
 from pyuvdata import UVCal
@@ -170,6 +171,15 @@ class StefcalUVData():
         '''
         self.model_vis.read_uvfits(modelname)
         self.measured_vis.read_uvfits(dataname)
+        #import_uvfits appears to use 0-indexed uvfits
+        self.model_vis.ant_1_array+=1
+        self.model_vis.ant_2_array+=1
+        self.measured_vis.ant_1_array+=1
+        self.measured_vis.ant_2_array+=1
+        self.model_vis.antenna_numbers+=1
+        self.measured_vis.antenna_numbers+=1
+        if DEBUG:
+            print('antenna_numbers='+str(self.model_vis.antenna_numbers))
         
     def _load_miriad(self,dataname,modelname):
         '''
@@ -213,7 +223,7 @@ class StefcalUVData():
                 for blnum in range(self.measured_vis.Nbls):
                     bl_selection=self.baseline_array==self.baseline_array[blnum]
                     ndiffs=0
-                    for chan in range(self.vis_measured.Nfreqs):
+                    for chan in range(self.measured_vis.Nfreqs):
                         data_select=self.measured_vis.data_array[bl_selection,self.spw,chan,pol]
                         flag_select=self.cal_flag_weights.flag_array[bl_selection,self.spw,chan,pol]
                         #only take diffs for adjacent channels,
@@ -329,6 +339,7 @@ class StefcalUVData():
                                                       self.measured_vis.Npols))
         self.meta_params.dof_per_ant=np.zeros_like(self.meta_params.chi_square_per_ant)
         self.meta_params.noise_tblavg=np.zeros(self.measured_vis.Nfreqs)
+        self.meta_params.Ntime_steps=int(np.ceil(self.measured_vis.Ntimes/self.meta_params.t_avg))
         self._check_consistency()
         #compute noise matrices
         self._compute_noise()
@@ -353,7 +364,10 @@ class StefcalUVData():
         self.uvcal.cal_type='gain'
         self.uvcal.git_origin_cal='calibrated with stefcal_uvdata version %s with run id %s'\
                                    %(self.meta_params.stefcal_version_str,self.meta_params.id)
-        
+        #initialize uvcal gain and quality arrays
+        self.uvcal.gain_array=9e99*np.ones((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=complex)
+        self.uvcal.flag_array=np.empty((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=bool)
+
         
         
 
@@ -421,27 +435,29 @@ class StefcalUVData():
             t_steps, integer time-steps defining Ntimes axis. 
             hermit, boolean, set true if output[a,b]=conj(output[b,a])
         """
-        timeList=np.unique(self.vis_measured.time_array)
-        antList=np.unique(self.vis_measured.ant_1_array)
+        timeList=np.unique(self.measured_vis.time_array)
+        antList=np.unique(self.measured_vis.antenna_numbers)
         nT=len(t_steps)
         nAnt=len(antList)
-        output=np.empty((nT,nAnt,nAnt),dtype=bl_list.dtype)
+        if DEBUG:
+            print('number of antennas ='+str(nAnt))
+        output=np.empty((nT,nAnt,nAnt),dtype=blt_list.dtype)
         for t_step in range(nT):
-            selection=self.vis_measured.time_array==timeList[t_step]
+            selection=self.measured_vis.time_array==timeList[t_step]
             bl_list=blt_list[selection]
-            for antNum1 in range(nAnt):
-                ant1=antList[antNum1]
-                for antNum2 in range(antNum1):
-                    ant2=antList[antNum2]
-                    selection=np.logical_and(self.vis_measured.time_array\
+            for antNum2 in range(nAnt):
+                ant2=antList[antNum2]
+                for antNum1 in range(antNum2):
+                    ant1=antList[antNum1]
+                    selection=np.logical_and(self.measured_vis.time_array\
                                              ==timeList[t_step],
-                                             np.logical_and(self.vis_measured.ant_1_array==ant1,
-                                                            self.vis_measured.ant_2_array==ant2))
-                    output[antNum1,antNum2]=blt_list[selection]
+                                             np.logical_and(self.measured_vis.ant_1_array==ant1,
+                                                            self.measured_vis.ant_2_array==ant2))
+                    output[t_step,antNum1,antNum2]=blt_list[selection]
                     if hermit:
-                        output[antNum1,antNum2]=np.conj(blt_list[selection])
+                        output[t_step,antNum1,antNum2]=np.conj(blt_list[selection])
                     else:
-                        output[antNum1,antNum2]=blt_list[selection]
+                        output[t_step,antNum1,antNum2]=blt_list[selection]
         return output
 
     #Function to reinitialize from files and id
@@ -554,31 +570,40 @@ class StefcalUVData():
         for pol in range(self.measured_vis.Npols):
             #for each channel and time-averaging step, 
             for chan in range(self.measured_vis.Nfreqs):
-                nsteps=int(np.ceil(self.measured_vis.Ntimes/self.meta_params.t_avg))
-                for tstep in range(nsteps):
-                    t_steps=range((tstep-1)*t_avg,np.min([test*t_avg,
-                                                          self.measured_vis.Ntimes]))
+                for tstep in range(self.meta_params.Ntime_steps):
+                    t_steps=range(tstep*self.meta_params.t_avg,np.min([(tstep+1)*self.meta_params.t_avg,
+                                                                       self.measured_vis.Ntimes-1]))
                     data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
                     model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
                     weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
                     flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=False)
-                    ant_flags,
-                    flag_matrix,
-                    niter,
-                    gains=stefcal.stefcal_scaler(data_mat,model_mat,
-                                                 weights_mat,
-                                                 flags_mat,
-                                                 self.meta_params.refant,
-                                                 self.meta_params.n_phase_iter,
-                                                 self.meta_params.n_cycles,
-                                                 self.meta_params.min_bl_per_ant,
-                                                 self.meta_params.eps,
-                                                 self.meta_params.min_ant_times,
-                                                 self.meta_params.trim_neff)
-                    self.uvcal.gain_array[:,self.meta_params.spw,chan,t_steps,pol]=gains
-                    self.uvcal.flag_array[:,self.meta_params,spw,chan,t_steps,pol]=ant_flags
-                    self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol]=np.logical_or(flag_matrix,self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,t_steps,pol])
-                    self.meta_params.iterations[chan,pol,:]=niter
+                    ant_flags,flag_matrix,niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
+                                                                             weights_mat,
+                                                                             flags_mat,
+                                                                             self.meta_params.refant,
+                                                                             self.meta_params.n_phase_iter,
+                                                                             self.meta_params.n_cycles,
+                                                                             self.meta_params.min_bl_per_ant,
+                                                                             self.meta_params.eps,
+                                                                             self.meta_params.min_ant_times,
+                                                                             self.meta_params.trim_neff)
+                    if DEBUG:
+                        print('gain_array.shape='+str(self.uvcal.gain_array.shape))
+                        print('spw='+str(self.meta_params.spw))
+                        print('chan='+str(chan))
+                        print('t_steps='+str(t_steps))
+                        print('pol='+str(pol))
+                        print('gains.shape='+str(gains.shape))
+                        print('ant_flags.shape='+str(ant_flags.shape))
+                        print('flag_array.shape='+str(self.uvcal.flag_array.shape))
+                        print('cfw.flag_array.shape='+str(self.cal_flag_weights.flag_array.shape))
+                        print('flag_matrix.shape='+str(flag_matrix.shape))
+                    for ts in t_steps:
+                        self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
+                        self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags
+                        self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,ts,pol]=np.logical_or(flag_matrix,self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,ts,pol])
+                        #Need to translate back into blt list!
+                        self.meta_params.Niterations[ts,chan,pol,:]=niter
             #compute chi-squares
             self._compute_chiSQ()
             #get data, model, weights, flags

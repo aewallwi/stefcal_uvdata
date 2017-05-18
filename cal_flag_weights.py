@@ -24,7 +24,7 @@ class CalFlagWeights():
               'shape: (Nblts,Nspws,Nfreqs,Npols)')
         self._weights_array=uvp.UVParameter('weights_array',description=desc,
                                            form=('Nblts','Nspws','Nfreqs','Npols'),
-                                           expected_type=np.float)        
+                                            expected_type=np.float)        
         desc='unique string identifier associating calflagweights with cal file and meta file'
         self._id=uvp.UVParameter('id',description=desc,
                                  expected_type=str)
@@ -39,7 +39,7 @@ class CalFlagWeights():
             data=pickle.load(open(data,"rb"))
             self.weights_array=copy.copy(data.weights_array)
         else:
-            self.weights_array=copy.copy(data.nsample_array)
+            self.weights_array=copy.copy(data.nsample_array).astype(np.float64)
         self.flag_array=copy.copy(data.flag_array)
         del(data)
         
