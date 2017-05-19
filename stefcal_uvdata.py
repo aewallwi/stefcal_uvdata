@@ -1,5 +1,6 @@
 DEBUG=True
 from pyuvdata import UVData
+import copy
 import numpy as np
 from pyuvdata import UVCal
 import pyuvdata.parameter as uvp
@@ -9,6 +10,36 @@ import pickle
 from stefcal_meta import StefcalMeta
 import uuid
 
+#************************************************************
+#Generate a corrected uvdata set. 
+#************************************************************
+def correct_vis(uvdata,uvcal):
+    """
+    Generate a corrected uvdata set 
+    Args: uvdata, data set to apply gains to
+          uvcal, calibration solution to apply
+    Returns:
+          uvcal object identical to uvdata except
+          data_array has had gains divided out
+          and calibration flags have been applied to 
+          data
+    """
+    corrected_vis=copy.deepcopy(uvdata)
+    #merge flags
+    for ant in range(corrected_vis.Nants_data):
+        for tnum in range(corrected_vis.Ntimes):
+            selection=np.logical_and(corrected_vis.ant_1_array==ant,
+                                     corrected_vis.time_array==uvcal.time_array[tnum])
+            selection_conj=np.logical_and(corrected_vis.ant_2_array==ant,
+                                          corrected_vis.time_array==uvcal.time_array[tnum])
+            for pol in range(corrected_vis.Npols):
+                for chan in range(corrected_vis.Nfreqs):
+                    corrected_vis.data_array[selection,1,chan,pol]/=np.conj(uvcal.gain_array[ant,1,chan,tnum,pol])
+                    corrected_vis.data_array[selection,1,chan,pol]/=uvcal.gain_array[ant,1,chan,tnum,pol]
+                    corrected_vis.flag_array[selection,1,chan,pol]=np.logical_or(corrected_vis.flag_array,
+                                                                                 [uvcal.flag_array[ant,1,chan,tnum,pol] for m in range(len(selection[selection]))])
+    return corrected_vis
+    
 
 #************************************************************
 #Need to store state IDs for different times
@@ -50,9 +81,8 @@ class StefcalUVData():
         self.meta_params.t_avg=t_avg
         self.meta_params.trim_neff=trim_neff
         self.meta_params.min_ant_times=min_ant_times
-
         self.cal_flag_weights=CalFlagWeights(self.meta_params.id)
-
+        
         
     def _compare_model_data(self,model,data,compare_flags=False,compare_weights=False,compare_phase=False):
         """
@@ -142,10 +172,8 @@ class StefcalUVData():
         """
         if not(self._compare_model_data(self.model_vis,self.measured_vis)):
                raise ValueError("model_vis not consistent with measured_vis")
-        
-    #if(self.compare_properties(self.model_vis,self.flag_weights)):
-            #raise ValueError("flag weights non consistent with visibilities")
-            
+
+
     def _load_vis_ms(self,msname):
         '''
         read in ms visibilities
@@ -382,37 +410,44 @@ class StefcalUVData():
         #compute noise matrices
         self._compute_noise()
         #initializes uvcal object properties
-        self.uvcal.Njones=self.measured_vis.Npols
-        self.uvcal.Nfreqs=self.measured_vis.Nfreqs
-        self.uvcal.Ntimes=self.measured_vis.Ntimes
-        self.uvcal.Nspws=self.measured_vis.Nspws
-        self.uvcal.time_range=(self.measured_vis.time_array.min(),self.measured_vis.time_array.max())
-        self.uvcal.telescope_name=self.measured_vis.telescope_name
-        self.uvcal.Nants_data=self.measured_vis.Nants_data
-        self.uvcal.Nants_telescope=self.measured_vis.Nants_telescope
-        self.uvcal.ant_array=np.unique(self.measured_vis.ant_1_array)
-        self.uvcal.antenna_names=self.measured_vis.antenna_names
-        self.uvcal.antenna_numbers=self.measured_vis.antenna_numbers
-        self.uvcal.freq_array=self.measured_vis.freq_array
-        self.uvcal.channel_width=self.measured_vis.channel_width
-        self.uvcal.jones_array=self.measured_vis.polarization_array
-        self.uvcal.time_array=np.unique(self.measured_vis.time_array)
-        self.uvcal.integration_time=self.measured_vis.integration_time
-        self.uvcal.x_orientation='east' #stefcal is going to treat x as east.
-        self.uvcal.cal_type='gain'
-        self.uvcal.quality_array=np.zeros((self.measured_vis.Nants_data,
-                                           1,
-                                           self.measured_vis.Nfreqs,
-                                           self.measured_vis.Ntimes,
-                                           self.measured_vis.Npols,
-                                           ))
-        self.uvcal.git_origin_cal='calibrated with stefcal_uvdata version %s with run id %s'\
-                                   %(self.meta_params.stefcal_version_str,self.meta_params.id)
-        #initialize uvcal gain and quality arrays
-        self.uvcal.gain_array=9e99*np.ones((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=complex)
-        self.uvcal.flag_array=np.empty((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=bool)
+        self.uvcal=self.uvcal_from_data()
 
         
+    
+    def uvcal_from_data(self):
+        """
+        Generate an empty uvcal object from visibility parameters
+        """
+        uvc=UVCal()
+        uvc.Njones=self.measured_vis.Npols
+        uvc.Nfreqs=self.measured_vis.Nfreqs
+        uvc.Ntimes=self.measured_vis.Ntimes
+        uvc.Nspws=self.measured_vis.Nspws
+        uvc.time_range=(self.measured_vis.time_array.min(),self.measured_vis.time_array.max())
+        uvc.telescope_name=self.measured_vis.telescope_name
+        uvc.Nants_data=self.measured_vis.Nants_data
+        uvc.Nants_telescope=self.measured_vis.Nants_telescope
+        uvc.ant_array=np.unique(self.measured_vis.ant_1_array)
+        uvc.antenna_names=self.measured_vis.antenna_names
+        uvc.antenna_numbers=self.measured_vis.antenna_numbers
+        uvc.freq_array=self.measured_vis.freq_array
+        uvc.channel_width=self.measured_vis.channel_width
+        uvc.jones_array=self.measured_vis.polarization_array
+        uvc.time_array=np.unique(self.measured_vis.time_array)
+        uvc.integration_time=self.measured_vis.integration_time
+        uvc.x_orientation='east'#always
+        uvc.cal_type='gain'
+        uvc.quality_array=np.zeros((self.measured_vis.Nants_data,
+                                    1,
+                                    self.measured_vis.Nfreqs,
+                                    self.measured_vis.Ntimes,
+                                    self.measured_vis.Npols))
+        uvc.git_origin_cal='calibrated with stefcal_uvdata version %s with run id %s'\
+                            %(self.meta_params.stefcal_version_str,self.meta_params.id)
+        uvc.gain_array=np.ones((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=complex)
+        uvc.flag_array=np.empty((self.meta_params.Nants_data,1,self.model_vis.Nfreqs,self.model_vis.Ntimes,self.model_vis.Npols),dtype=bool)
+        uvc.flag_array[:]=False
+        return uvc
         
 
         
