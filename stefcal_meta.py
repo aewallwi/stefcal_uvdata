@@ -108,13 +108,21 @@ class StefcalMeta():
                                                  form=('Nants_data','Nfreqs',
                                                        'Ntimes','Njones'),
                                                  expected_type=float,required=False)
-        
+        desc="Chi-Squares for each time step, frequency, and polarization."
+        self._chi_square=uvp.UVParameter('chi_square',description=desc,
+                                         form=('Nfreqs','Ntimes','Njones'),
+                                         expected_type=float,required=False)
+
         desc='keeps track of degrees of freedom per gain solution.'
         self._dof_per_ant=uvp.UVParameter('dof_per_ant',description=desc,
                                           form=('Nants_data','Nfreqs',
                                                 'Ntimes','Njones'),
                                           expected_type=float)
-                    
+        desc="degrees of freedom per time, frequency, and polarization."
+        self._dof=uvp.UVParameter('dof',description=desc,
+                                  form=('Nfreqs','Ntimes','Njones'),
+                                  expected_type=float)
+        
         
         #self._noise_tavg=uvp.UVParameter('noise_tavg',
         #                                 description='noise levels in uncalibrated'
@@ -185,4 +193,6 @@ class StefcalMeta():
         self.noise_tblavg=copy.copy(data.noise_tblavg)
         self.stefcal_version_str=copy.copy(data.stefcal_version_str)
         self.Ntime_steps=copy.copy(data.Ntime_steps)
+        self.chi_square=copy.copy(data.chi_square)
+        self.dof=copy.copy(data.dof)
         del(data)

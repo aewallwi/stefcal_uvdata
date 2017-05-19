@@ -75,7 +75,7 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
     
 def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     refant=0,n_phase_iter=5,n_cycles=1,min_bl_per_ant=2,
-                    eps=1e-10,min_ant_times=1,trim_neff=False):
+                    eps=1e-10,min_ant_times=1,trim_neff=False,perterb=0.):
     '''
     2-basic stefcal algorithm described in Salvini et al. 
     Args:
@@ -109,17 +109,6 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
         gains, nAnt numpy array of complex numbers with estimated gains
     '''
     #start with type checks
-    if DEBUG:
-        print('weights_matrix.dtype='+str(weights_matrix.dtype))
-        print('data_matrix.dtype='+str(data_matrix.dtype))
-        print('model_matrix.dtype='+str(model_matrix.dtype))
-        print('flag_matrix.dtype='+str(flag_matrix.dtype))
-        print('weights_matrix.shape='+str(weights_matrix.shape))
-        print('data_matrix.shape='+str(data_matrix.shape))
-        print('model_matrix.shape='+str(model_matrix.shape))
-        print('flag_matrix.shape='+str(flag_matrix.shape))
-
-        
     assert weights_matrix.dtype==np.float64
     assert data_matrix.dtype==np.complex64
     assert model_matrix.dtype==np.complex64
@@ -135,8 +124,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     weights_matrix[flag_matrix]=0.
     ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
 
-    if DEBUG:
-        print('ant_flags.shape='+str(ant_flags.shape))
+
     for nt in range(nTimes):
         ant_flags[nt][compute_neff(weights_matrix)<min_bl_per_ant]=True
     
@@ -153,8 +141,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     _eps=1.
     niter=np.zeros(n_cycles)
     gnew=0
-    if DEBUG:
-        print('ant_flags shape='+str(ant_flags.shape))
+
     nAntG=len(antNumbers)
     gains=np.ones(nAnt,dtype=complex)
     gainsG=np.ones(nAntG,dtype=complex)
@@ -175,10 +162,20 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             weights_matrixG[:,m,n]=weights_matrix[:,antNumbers[m],antNumbers[n]]
             weights_matrixG[:,n,m]=weights_matrix[:,antNumbers[n],antNumbers[m]]
     #run stefcal cycles
+    #if DEBUG:
+    #    print('data_matrix='+str(data_matrixG[0,1,:]))
+    #    print('model_matrix='+str(model_matrixG[0,1,:]))
+    #    print('weights_matrix='+str(weights_matrixG[0,1,:]))
     for cycle in range(n_cycles):
-        gainsG_temp[:]=1.
-        gainsG[:]=1.
-        while _eps>eps:
+        #if DEBUG:
+        #    print('cycle='+str(cycle))
+            
+        perterbation=np.random.randn(len(gainsG))*perterb
+        gainsG_temp[:]=1.+perterbation
+        gainsG[:]=1.+perterbation
+
+        while _eps>eps or niter[cycle]<=n_phase_iter:
+            #print('_eps='+str(_eps))
             gNumerator[:]=0.
             gDenominator[:]=0.
             gainsG_temp[:]=gainsG[:]
@@ -187,16 +184,23 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                 zmat_w=np.diag(np.conj(gainsG)).dot(model_matrixG[nt]*weights_matrixG[nt])
                 gNumerator+=np.sum(np.conj(zmat_w)*data_matrixG[nt],axis=0)
                 gDenominator+=np.sum(np.conj(zmat_w)*zmat,axis=0)
+            #if DEBUG:
             gainsG=gNumerator/gDenominator
             if(niter[cycle]<n_phase_iter):
                 gainsG=gainsG*np.abs(gainsG_temp)/np.abs(gainsG)
             gainsG=gainsG_temp/2.+gainsG/2. 
             gainsG*=np.conj(gainsG[refant])/np.abs(gainsG[refant])
             _eps=np.abs(gainsG-gainsG_temp).max()
+            if DEBUG:
+                print('_eps='+str(_eps))
+                if np.isnan(_eps):
+                    print('gDenominator='+str(gDenominator))
+                    print('len(gDenominator)='+str(len(gDenominator)))
+                    print('gNumerator='+str(gNumerator))
+                    print('len(gNumerator)='+str(len(gNumerator)))
+
             niter[cycle]+=1.
-        if DEBUG:
-            print('data_matrixG.shape='+str(data_matrixG.shape))
-            print('gainsG.shape='+str(gainsG.shape))
+
         for nt in range(nTimes):
             for m in range(nAntG):
                 gains[antNumbers[m]]*=gainsG[m]
