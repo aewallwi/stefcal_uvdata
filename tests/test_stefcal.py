@@ -49,11 +49,11 @@ def test_perfect_calibration():
                                 'eps':1e-10,
                                 'min_bl_per_ant':2,
                                 'n_cycles':1,
-                                'n_phase_iter':5,
+                                'n_phase_iter':0,
                                 'refant':0})
     
-    stefcal_perfect.stefcalibrate()
-    print('stef-calibrated with %s iterations'%stefcal_perfect.meta_params.iterations)
+    stefcal_perfect.stefcalibrate(perterb=1e-2)
+    print('stef-calibrated with %s iterations'%stefcal_perfect.meta_params.Niterations)
     #test that the number of degress of freedom
     #per antenna is equal to the number of antennas - 1
 
