@@ -1,4 +1,5 @@
 """Tests for stefcal uvdata"""
+DEBUG=True
 import nose.tools as nt
 import numpy as np
 import os
@@ -54,28 +55,37 @@ def test_perfect_calibration_random_gains():
     reflections and perfect sky model. Difference between 
     true and estimated gains should be small.
     """
-    eps=1e-10
+    eps=1e-14
     stefcal_perfect=StefcalUVData()
     measured_vis=os.path.join(DATA_PATH,'point_source_sim_model.uvfits')
     model_vis=os.path.join(DATA_PATH,'point_source_sim_model.uvfits')
     stefcal_perfect.from_uvfits(measured_vis,model_vis,
                                 flag_weights_fromdata=True)
+    refant=0
     #set params
     stefcal_perfect.set_params({'trim_neff':False,
                                 'min_ant_times':1,
                                 'eps':eps,
                                 'min_bl_per_ant':2,
-                                'n_cycles':1,
+                                'n_cycles':10,
                                 'n_phase_iter':0,
-                                'refant':0})
+                                'refant':refant})
     gshape=stefcal_perfect.uvcal.gain_array.shape
-    gain_array=2.+np.random.randn(*gshape)+1j*np.random.randn(*gshape)
+    gain_array=1.+1e-3+np.random.randn(*gshape)+1e-3j*np.random.randn(*gshape)
+    gain_array[refant,:,:,:,:]=np.abs(gain_array[refant,:,:,:,:])
+    #make sure reference antenna phase is zero. 
     gains_random=stefcal_perfect.uvcal_from_data()
-    gains_random.gain_array=1./gain_array
-    stefcal_perfect.measured_vis=suv.correct_vis(stefcal_perfect.measured_vis,gains_random)
+    gains_random.gain_array=gain_array
+    stefcal_perfect.measured_vis=suv.correct_vis(stefcal_perfect.measured_vis,gains_random,applyGains=True)
     #calibrate
-    stefcal_perfect.stefcalibrate(perterb=1e-2)
+    stefcal_perfect.stefcalibrate(perterb=0.)
     #compare calibration solution with gain array
+    if DEBUG:
+        print('max abs='+str(np.max(np.abs(stefcal_perfect.uvcal.gain_array-gain_array))))
+        print np.abs(stefcal_perfect.uvcal.gain_array[:,0,0,0,0]-gain_array[:,0,0,0,0])
+        print np.abs(stefcal_perfect.uvcal.gain_array[0,0,0,:,0]-gain_array[0,0,0,:,0])
+        print np.abs(stefcal_perfect.uvcal.gain_array[0,0,0,0,:]-gain_array[0,0,0,0,:])
+        print stefcal_perfect.meta_params.Niterations[0,:,0,0]
     nt.assert_true(np.max(np.abs(stefcal_perfect.uvcal.gain_array-gain_array))<=10.*eps)
     
     
@@ -95,11 +105,11 @@ def test_perfect_calibration_unity_gains():
     #set parameters
     stefcal_perfect.set_params({'trim_neff':False,
                                 'min_ant_times':1,
-                                'eps':epse,
+                                'eps':eps,
                                 'min_bl_per_ant':2,
                                 'n_cycles':1,
                                 'n_phase_iter':0,
-                                'refant':0})    
+                                'refant':0})
     stefcal_perfect.stefcalibrate(perterb=1e-2)
     #verify that solutions are no greater than eps
     

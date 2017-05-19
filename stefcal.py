@@ -191,20 +191,20 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             gainsG=gainsG_temp/2.+gainsG/2. 
             gainsG*=np.conj(gainsG[refant])/np.abs(gainsG[refant])
             _eps=np.abs(gainsG-gainsG_temp).max()
-            if DEBUG:
-                print('_eps='+str(_eps))
-                if np.isnan(_eps):
-                    print('gDenominator='+str(gDenominator))
-                    print('len(gDenominator)='+str(len(gDenominator)))
-                    print('gNumerator='+str(gNumerator))
-                    print('len(gNumerator)='+str(len(gNumerator)))
+            #if DEBUG:
+            #    print('_eps='+str(_eps))
+            #    if np.isnan(_eps):
+            #        print('gDenominator='+str(gDenominator))
+            #        print('len(gDenominator)='+str(len(gDenominator)))
+            #        print('gNumerator='+str(gNumerator))
+            #        print('len(gNumerator)='+str(len(gNumerator)))
 
             niter[cycle]+=1.
 
         for nt in range(nTimes):
-            for m in range(nAntG):
-                gains[antNumbers[m]]*=gainsG[m]
-                for n in range(m):
+            for n in range(nAntG):
+                gains[antNumbers[n]]*=gainsG[n]
+                for m in range(n):
                     data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
                     data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
     return ant_flags,ant_flags_combined,niter,gains

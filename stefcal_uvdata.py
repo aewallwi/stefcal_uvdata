@@ -13,7 +13,7 @@ import uuid
 #************************************************************
 #Generate a corrected uvdata set. 
 #************************************************************
-def correct_vis(uvdata,uvcal):
+def correct_vis(uvdata,uvcal,applyGains=False):
     """
     Generate a corrected uvdata set 
     Args: uvdata, data set to apply gains to
@@ -28,16 +28,21 @@ def correct_vis(uvdata,uvcal):
     #merge flags
     for ant in range(corrected_vis.Nants_data):
         for tnum in range(corrected_vis.Ntimes):
-            selection=np.logical_and(corrected_vis.ant_1_array==ant,
+            selection=np.logical_and(corrected_vis.ant_2_array==ant,
                                      corrected_vis.time_array==uvcal.time_array[tnum])
-            selection_conj=np.logical_and(corrected_vis.ant_2_array==ant,
+            selection_conj=np.logical_and(corrected_vis.ant_1_array==ant,
                                           corrected_vis.time_array==uvcal.time_array[tnum])
             for pol in range(corrected_vis.Npols):
                 for chan in range(corrected_vis.Nfreqs):
-                    corrected_vis.data_array[selection,1,chan,pol]/=np.conj(uvcal.gain_array[ant,1,chan,tnum,pol])
-                    corrected_vis.data_array[selection,1,chan,pol]/=uvcal.gain_array[ant,1,chan,tnum,pol]
-                    corrected_vis.flag_array[selection,1,chan,pol]=np.logical_or(corrected_vis.flag_array,
-                                                                                 [uvcal.flag_array[ant,1,chan,tnum,pol] for m in range(len(selection[selection]))])
+                    if applyGains:
+                        corrected_vis.data_array[selection_conj,0,chan,pol]*=np.conj(uvcal.gain_array[ant,0,chan,tnum,pol])
+                        corrected_vis.data_array[selection,0,chan,pol]*=uvcal.gain_array[ant,0,chan,tnum,pol]
+                    else:
+                        corrected_vis.data_array[selection_conj,0,chan,pol]/=np.conj(uvcal.gain_array[ant,0,chan,tnum,pol])
+                        corrected_vis.data_array[selection,0,chan,pol]/=uvcal.gain_array[ant,0,chan,tnum,pol]
+                    added_flags=[uvcal.flag_array[ant,0,chan,tnum,pol] for m in range(len(selection[selection]))]
+                    corrected_vis.flag_array[selection,0,chan,pol]=np.logical_or(corrected_vis.flag_array[selection,0,chan,pol],added_flags)
+                                
     return corrected_vis
     
 
@@ -551,7 +556,7 @@ class StefcalUVData():
             output[:]=0.
         if output.dtype==np.int:
             output[:]=0
-        for t_step in range(nT):
+        for ts,t_step in enumerate(t_steps):
             t_selection=self.measured_vis.time_array==timeList[t_step]
             for antNum2 in range(nAnt):
                 ant2=antList[antNum2]
@@ -560,11 +565,11 @@ class StefcalUVData():
                     a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
                                                self.measured_vis.ant_2_array==ant2)
                     selection=np.logical_and(a_selection,t_selection)
-                    output[t_step,antNum1,antNum2]=blt_list[selection][0]
+                    output[ts,antNum1,antNum2]=blt_list[selection][0]
                     if hermit:
-                        output[t_step,antNum2,antNum1]=np.conj(blt_list[selection])[0]
+                        output[ts,antNum2,antNum1]=np.conj(blt_list[selection])[0]
                     else:
-                        output[t_step,antNum2,antNum1]=blt_list[selection][0]
+                        output[ts,antNum2,antNum1]=blt_list[selection][0]
         return output
 
     #Function to reinitialize from files and id
@@ -609,9 +614,10 @@ class StefcalUVData():
         set n_cycles, int
         """
         self.meta_params.n_cycles=n_cycles
-        self.meta_params.Nitrations=np.zeros((self.meta_params.n_cycles,
-                                              self.meta_params.Nfreqs,
-                                              self.meta_params.Njones),dtype=int)
+        self.meta_params.Niterations=np.zeros((self.meta_params.Ntimes,
+                                               self.meta_params.n_cycles,
+                                               self.meta_params.Nfreqs,
+                                               self.meta_params.Njones),dtype=int)
     def set_min_bl_per_ant(self,min_bl_per_ant):
         """
         set min_bl_per_ant, int
@@ -685,13 +691,13 @@ class StefcalUVData():
                     model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
                     weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=True)
                     flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,hermit=False)
-                    if DEBUG:
-                        print('t_steps='+str(t_steps))
-                        print('weights_mat.shape='+str(weights_mat.shape))
-                        print('weights_mat='+str(weights_mat[0,0,:]))
-                        print('data_mat='+str(data_mat[0,0,:]))
-                        print('flags_mat='+str(flags_mat[0,0,:]))
-                        print('model_mat='+str(model_mat[0,0,:]))
+                    #if DEBUG:
+                    #    print('t_steps='+str(t_steps))
+                    #    print('weights_mat.shape='+str(weights_mat.shape))
+                    #    print('weights_mat='+str(weights_mat[0,0,:]))
+                    #    print('data_mat='+str(data_mat[0,0,:]))
+                    #    print('flags_mat='+str(flags_mat[0,0,:]))
+                    #    print('model_mat='+str(model_mat[0,0,:]))
                     ant_flags,flag_matrix,niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
                                                                              weights_mat,
                                                                              flags_mat,
@@ -706,6 +712,8 @@ class StefcalUVData():
                         self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
                         self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags
                         #Need to translate back into blt list!
+                        #if DEBUG:
+                            #print('shape niterations='+str(self.meta_params.Niterations.shape))
                         self.meta_params.Niterations[ts,:,chan,pol]=niter
                         full_flags[ts,:,:]=flag_matrix
             self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol]=np.logical_or(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol],
