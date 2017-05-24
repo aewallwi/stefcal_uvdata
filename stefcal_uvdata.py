@@ -1,4 +1,4 @@
-DEBUG=True
+DEBUG=False
 from pyuvdata import UVData
 import copy
 import numpy as np
@@ -127,9 +127,13 @@ class StefcalUVData():
         if model.Nants_telescope!=data.Nants_telescope:
             checkpass=False
             print("Nants_telescope not the same")
-        if model.antenna_names!=data.antenna_names:
-            checkpass=False
-            print("antenna_names not the same")
+        #****************************************
+        #There is a bug in uvfits.py that is breaking
+        #antenna names!
+        #****************************************
+        #if model.antenna_names!=data.antenna_names:
+        #    checkpass=False
+        #    print("antenna_names not the same")
         if np.any(model.antenna_numbers!=data.antenna_numbers):
             checkpass=False
             print("antenna_numbers not the same")
@@ -606,7 +610,7 @@ class StefcalUVData():
         """
         set n_phase_iter, int
         """
-        self.meta_params.self_n_phase_iter=n_phase_iter
+        self.meta_params.n_phase_iter=n_phase_iter
         
 
     def set_n_cycles(self,n_cycles):
@@ -622,23 +626,33 @@ class StefcalUVData():
         """
         set min_bl_per_ant, int
         """
-        self.min_bl_per_ant=min_bl_per_ant
+        self.meta_params.min_bl_per_ant=min_bl_per_ant
     def set_eps(self,eps):
         """
         set eps, float
         """
-        self.eps=eps
-        
+        self.meta_params.eps=eps
+
+    def set_tavg(self,t_avg):
+        """
+        set number of time samples to average over.
+        """
+        self.meta_params.t_avg=t_avg
+        self.meta_params.Ntime_steps=int(np.ceil(self.measured_vis.Ntimes/self.meta_params.t_avg))
+        self.meta_params.Niterations=np.zeros((self.meta_params.Ntime_steps,
+                                               self.meta_params.n_cycles,
+                                               self.model_vis.Nfreqs,
+                                               self.model_vis.Npols),dtype=int)
     def set_min_ant_times(self,min_ant_times):
         """
         set min_ant_times, int
         """
-        self.min_ant_times=min_ant_times
+        self.meta_params.min_ant_times=min_ant_times
     def set_trim_neff(self,trim_neff):
         """
         set trim_neff, bool
         """
-        self.trim_neff=trim_neff
+        self.meta_params.trim_neff=trim_neff
 
     def set_params(self,param_dict):
         """
@@ -671,7 +685,8 @@ class StefcalUVData():
             self.set_n_phase_iter(param_dict['n_phase_iter'])
         if 'refant' in input_keys:
             self.set_refant(param_dict['refant'])
-           
+        if 't_avg' in input_keys:
+            self.set_tavg(param_dict['t_avg'])
         
     def stefcalibrate(self,perterb=0,parallelized=False):
         '''
@@ -701,20 +716,23 @@ class StefcalUVData():
                     ant_flags,flag_matrix,niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
                                                                              weights_mat,
                                                                              flags_mat,
-                                                                             self.meta_params.refant,
-                                                                             self.meta_params.n_phase_iter,
-                                                                             self.meta_params.n_cycles,
-                                                                             self.meta_params.min_bl_per_ant,
-                                                                             self.meta_params.eps,
-                                                                             self.meta_params.min_ant_times,
-                                                                             self.meta_params.trim_neff,perterb)
-                    for ts in t_steps:
+                                                                             refant=self.meta_params.refant,
+                                                                             n_phase_iter=self.meta_params.n_phase_iter,
+                                                                             n_cycles=self.meta_params.n_cycles,
+                                                                             min_bl_per_ant=self.meta_params.min_bl_per_ant,
+                                                                             eps=self.meta_params.eps,
+                                                                             min_ant_times=self.meta_params.min_ant_times,
+                                                                             trim_neff=self.meta_params.trim_neff,
+                                                                             perterb=perterb)
+                    if DEBUG:
+                        print('gains.shape='+str(gains.shape))
+                    self.meta_params.Niterations[tstep,:,chan,pol]=niter
+                    for tsn,ts in enumerate(t_steps):
                         self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
-                        self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags
+                        self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
                         #Need to translate back into blt list!
                         #if DEBUG:
                             #print('shape niterations='+str(self.meta_params.Niterations.shape))
-                        self.meta_params.Niterations[ts,:,chan,pol]=niter
                         full_flags[ts,:,:]=flag_matrix
             self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol]=np.logical_or(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol],
                                                                                             self._matrix_2_blt_list(full_flags))

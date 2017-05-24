@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-DEBUG=True
+DEBUG=False
 #from numba import jit
 
 
@@ -135,7 +135,10 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                                                                          min_bl_per_ant)
     ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
     for m in range(nAnt):
-        ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])>min_ant_times
+        ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])<min_ant_times
+
+
+
     antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#the numbers of antennas not flagged
     #now run stefcal
     _eps=1.
@@ -181,6 +184,10 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             gainsG_temp[:]=gainsG[:]
             for nt in range(nTimes):
                 zmat=np.diag(np.conj(gainsG)).dot(model_matrixG[nt])
+                if DEBUG:
+                    print('gainsG.shape='+str(gainsG.shape))
+                    print('model_matrixG[nt].shape='+str(model_matrix[nt].shape))
+                    print('weights_matrixG[nt].shape='+str(weights_matrixG[nt].shape))
                 zmat_w=np.diag(np.conj(gainsG)).dot(model_matrixG[nt]*weights_matrixG[nt])
                 gNumerator+=np.sum(np.conj(zmat_w)*data_matrixG[nt],axis=0)
                 gDenominator+=np.sum(np.conj(zmat_w)*zmat,axis=0)
@@ -200,13 +207,12 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             #        print('len(gNumerator)='+str(len(gNumerator)))
 
             niter[cycle]+=1.
-
-        for nt in range(nTimes):
             for n in range(nAntG):
                 gains[antNumbers[n]]*=gainsG[n]
                 for m in range(n):
-                    data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
-                    data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
+                    for nt in range(nTimes):
+                        data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
+                        data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
     return ant_flags,ant_flags_combined,niter,gains
                 
     
