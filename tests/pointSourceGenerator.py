@@ -35,10 +35,10 @@ def drawRandomSources(smin,smax=1e3,area=2*PI):
     nsrcs=len(flux)
     print 'number of sources=%d'%(nsrcs)
     phiList=np.random.rand(int(nsrcs))*PI*2.
-    thetaList=np.arccos(np.random.rand(int(nsrcs))-1)
-    lAngleList=np.sin(thetaList)*np.cos(phiList)
-    mAngleList=np.sin(thetaList)*np.sin(phiList)
+    thetaList=np.arccos(2*np.random.rand(int(nsrcs))-1)
+    #lAngleList=np.sin(thetaList)*np.cos(phiList)
+    #mAngleList=np.sin(thetaList)*np.sin(phiList)
     select=flux<=smax
-    return np.array([lAngleList[select],mAngleList[select],flux[select],spIndices[select]]).T
+    return np.array([thetaList[select],phiList[select],flux[select],spIndices[select]]).T
 
 #    computeVisList(lAngles,mAngles,uList,vList,fluxList,output)
