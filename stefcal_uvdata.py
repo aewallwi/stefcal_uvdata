@@ -26,6 +26,9 @@ def correct_vis(uvdata,uvcal,applyGains=False):
     """
     corrected_vis=copy.deepcopy(uvdata)
     #merge flags
+    #print('data array before application='+str(corrected_vis.data_array))
+    #print('gains='+str(uvcal.gain_array))
+    #print('data type='+str(corrected_vis.data_array.dtype))
     for ant in range(corrected_vis.Nants_data):
         for tnum in range(corrected_vis.Ntimes):
             selection=np.logical_and(corrected_vis.ant_2_array==ant,
@@ -42,7 +45,7 @@ def correct_vis(uvdata,uvcal,applyGains=False):
                         corrected_vis.data_array[selection,0,chan,pol]/=uvcal.gain_array[ant,0,chan,tnum,pol]
                     added_flags=[uvcal.flag_array[ant,0,chan,tnum,pol] for m in range(len(selection[selection]))]
                     corrected_vis.flag_array[selection,0,chan,pol]=np.logical_or(corrected_vis.flag_array[selection,0,chan,pol],added_flags)
-                                
+    #print('data array after application='+str(corrected_vis.data_array))
     return corrected_vis
     
 
@@ -234,48 +237,13 @@ class StefcalUVData():
              averages.
         """
         #assert mode in ['TIME','FREQ','dTIMEmBL','dFREQmBL']
-        assert mode == 'dTIMEmTIMEBL'
-        """
-        if mode=='FREQ':
-            #take diff in freq and average over freq
-            self.meta_params.noise_favg=np.zeros((self.measured_vis.Nblts,self.measured_vis.Npols))
-            for pol in range(self.measured_vis.Npols):
-                for blt in range(self.measured_vis.Nblts):
-                    data_select=self.measured_vis.data_array[blt,:,self.spw,pol].squeeze()
-                    flag_select=self.cal_flag_weights.flag_array[blt,:,self.spw,pol].squeeze()
-                    #only take diffs for adjacent channels,
-                    mlist=np.array([])
-                    for chan in range(1,self.measured_vis.Nfreq,2):
-                        if not(flag_select[chan]) and not(flag_select[chan-1]):
-                            mlist=np.append(mlist,np.abs(data_select[chan]-data_select[chan-1])**2.)
-                   # minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
-                   #self.noise_favg[blt,pol]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
-                   self.meta_params.noise_favg[blt,pol]=np.median(mlist)/(2.*np.log(2.))
-        elif mode=='TIME':
-            #take diff in time and average over time
-            self.meta_params.noise_tavg=np.zeros((self.measured_vis.NBls,self.measured_vis.Nfreqs,self.Njones))
-            for pol in range(self.measured_vis.Npols):
-                for blnum in range(self.measured_vis.Nbls):
-                    bl_selection=self.baseline_array==self.baseline_array[blnum]
-                    ndiffs=0
-                    for chan in range(self.measured_vis.Nfreqs):
-                        data_select=self.measured_vis.data_array[bl_selection,self.spw,chan,pol]
-                        flag_select=self.cal_flag_weights.flag_array[bl_selection,self.spw,chan,pol]
-                        #only take diffs for adjacent channels,
-                        mlist=np.array([])
-                        for tnum in range(1,self.measured_vis.Ntimes,2):
-                            if not(flag_select[tnum]) and not(flag_select[tnum-1]):
-                                mlist=np.append(mlist, np.abs(data_select[tnum]-data_select[tnum-1])**2.)
-                        #minmax=np.percentile(mlist,[minmax_percentile,1-minmax_percentile])
-                        #self.noise_tavg[blnum,chan,pol]=np.mean(mlist[np.logical_and(mlist>=minmax[0],mlist<=minmax[1])])/2.
-                        self.meta_params.noise_tavg[blnum,chan,pol]=np.median(mlist)/(2.*np.log(2.))
-        """
-        if mode=='dTIMEmTIMEBL':
+        assert mode in ['dTIMEmTIMEBL','dFREQmTIMEBL']
+        if mode=='dTIMEmTIMEBL' and self.measured_vis.Ntimes>2:
             #take diff in time and average in time,baselines,and pols; good for measurement sets
             #with a small number of time samples.
             self.meta_params.noise_tblavg=np.zeros((self.measured_vis.Nfreqs))
             for chan in range(self.measured_vis.Nfreqs):
-                mlist=([])
+                mlist=np.array([])
                 for pol in range(self.measured_vis.Npols):
                     for blnum in range(self.measured_vis.Nbls):
                         bl_selection=self.measured_vis.baseline_array==self.measured_vis.baseline_array[blnum]
@@ -289,6 +257,26 @@ class StefcalUVData():
                 self.meta_params.noise_tblavg[chan]=np.median(mlist)/(2.*np.log(2.))
                 if self.meta_params.noise_tblavg[chan]==0.:
                     self.meta_params.noise_tblavg[chan]=9e99
+        elif mode=='dFREQmTIMEBL' or self.measured_vis.Ntimes<2:
+            #also able to take differences in frequencies
+            self.meta_params.noise_tblavg=np.zeros((self.measured_vis.Nfreqs))
+            for chan in range(1,self.measured_vis.Nfreqs):
+                mlist=np.array([])
+                for pol in range(self.measured_vis.Npols):
+                    for blnum in range(self.measured_vis.Nbls):
+                        bl_selection=self.measured_vis.baseline_array==self.measured_vis.baseline_array[blnum]
+                        data_select=self.measured_vis.data_array[bl_selection,self.meta_params.spw,chan,pol]
+                        flag_select=self.measured_vis.flag_array[bl_selection,self.meta_params.spw,chan,pol]
+                        data_select_pc=self.measured_vis.data_array[bl_selection,self.meta_params.spw,chan-1,pol]
+                        flag_select_pc=self.measured_vis.flag_array[bl_selection,self.meta_params.spw,chan-1,pol]
+                        
+                        for tnum in range(self.measured_vis.Ntimes):
+                            if not(flag_select[tnum]) and not (flag_select_pc[tnum]):
+                                mlist=np.append(mlist,np.abs(data_select[tnum]-data_select_pc[tnum])**2.)
+                self.meta_params.noise_tblavg[chan]=np.median(mlist)/(2.*np.log(2.))
+                if self.meta_params.noise_tblavg[chan]==0.:
+                    self.meta_params.noise_tblavg[chan]=9e99
+            self.meta_params.noise_tblavg[0]=self.meta_params.noise_tblavg[1]#set zero bin to 1 bin if using freq avg.
                         
     def _compute_chiSQ(self,mode='dTIMEmTIMEBL'):
         """
@@ -296,6 +284,11 @@ class StefcalUVData():
         \chi^2_i = \sum_{j,t} |v_{ij}-y_{i-j}g_i^*g_j |^2/\sigma_{ij}^2
         where \sigma_{ij}^2 at each frequency and baseline is estimated 
         """
+        antList=np.unique(self.measured_vis.antenna_numbers)
+        if antList.max()==len(antList):
+            indsub=1
+        else:
+            indsub=0
         #assert mode in ['TIME','dFREQmBL']
         self._compute_noise(mode=mode)
         #compute chi-squared values for each antenna, pol, and time.
@@ -305,8 +298,8 @@ class StefcalUVData():
                 for chan in range(self.measured_vis.Nfreqs):
                     flag_select=self.cal_flag_weights.flag_array[selection,self.meta_params.spw,
                                                                  chan,pol]
-                    ant1_select=self.measured_vis.ant_1_array[selection]
-                    ant2_select=self.measured_vis.ant_2_array[selection]
+                    ant1_select=self.measured_vis.ant_1_array[selection]-indsub
+                    ant2_select=self.measured_vis.ant_2_array[selection]-indsub
                     autos=ant1_select==ant2_select
                     flag_select=np.logical_or(flag_select,autos)
                     ant1_select=ant1_select[np.invert(flag_select)]
@@ -345,8 +338,8 @@ class StefcalUVData():
                                                                   chan,pol][np.invert(flag_ant_select)]
                         weight_ant_select=self.cal_flag_weights.weights_array[selection_ant,self.meta_params.spw,
                                                             chan,pol][np.invert(flag_ant_select)]
-                        ant2_ant_select=self.measured_vis.ant_2_array[selection_ant][np.invert(flag_ant_select)]
-                        ant1_ant_select=self.measured_vis.ant_1_array[selection_ant][np.invert(flag_ant_select)]
+                        ant2_ant_select=self.measured_vis.ant_2_array[selection_ant][np.invert(flag_ant_select)]-indsub
+                        ant1_ant_select=self.measured_vis.ant_1_array[selection_ant][np.invert(flag_ant_select)]-indsub
                         gain2_ant_select=self.uvcal.gain_array[ant2_ant_select,
                                                                self.meta_params.spw,
                                                                chan,
@@ -358,11 +351,11 @@ class StefcalUVData():
                                                                tnum,
                                                                pol]
 
-                        self.meta_params.chi_square_per_ant[antnum,chan,tnum,pol]=\
+                        self.meta_params.chi_square_per_ant[antnum-indsub,chan,tnum,pol]=\
                         np.sum(np.abs((data_ant_select-np.conj(gain1_ant_select)*gain2_ant_select*model_ant_select)*weight_ant_select/weight_ant_select.sum())**2.)
-                        self.meta_params.chi_square_per_ant[antnum,chan,tnum,pol]/=self.meta_params.noise_tblavg[chan]
+                        self.meta_params.chi_square_per_ant[antnum-indsub,chan,tnum,pol]/=self.meta_params.noise_tblavg[chan]
                         neff_ant=np.sum(weight_ant_select)/np.max(weight_ant_select)
-                        self.meta_params.dof_per_ant[antnum,chan,tnum,pol]=neff_ant-1
+                        self.meta_params.dof_per_ant[antnum-indsub,chan,tnum,pol]=neff_ant-1
         self.uvcal.quality_array=self.meta_params.chi_square_per_ant/self.meta_params.dof_per_ant
     def _read_files(self,data,mode,flag_weights_fromdata,flagweightsfile=None,model=None):
         '''
@@ -419,6 +412,8 @@ class StefcalUVData():
         #compute noise matrices
         self._compute_noise()
         #initializes uvcal object properties
+        #self.model_vis.data_array=self.model_vis.data_array.astype('complex128')
+        #self.measured_vis.data_array=self.measured_vis.data_array.astype('complex128')
         self.uvcal=self.uvcal_from_data()
 
         
@@ -535,6 +530,9 @@ class StefcalUVData():
                     ant1=antList[antNum1]
                     a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
                                                self.measured_vis.ant_2_array==ant2)
+                    if not(np.any(a_selection)):
+                        a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
+                                                   self.measured_vis.ant_2_array==ant2)
                     selection=np.logical_and(a_selection,t_selection)
                     output[selection]=blt_matrix[t_step,antNum1,antNum2]
         return output
@@ -568,6 +566,9 @@ class StefcalUVData():
                     ant1=antList[antNum1]
                     a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
                                                self.measured_vis.ant_2_array==ant2)
+                    if not(np.any(a_selection)):
+                        a_selection=np.logical_and(self.measured_vis.ant_1_array==ant2,
+                                                   self.measured_vis.ant_2_array==ant1)
                     selection=np.logical_and(a_selection,t_selection)
                     output[ts,antNum1,antNum2]=blt_list[selection][0]
                     if hermit:

@@ -110,8 +110,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     '''
     #start with type checks
     assert weights_matrix.dtype==np.float64
-    assert data_matrix.dtype==np.complex64
-    assert model_matrix.dtype==np.complex64
+    assert data_matrix.dtype==np.complex128 or data_matrix.dtype==np.complex64
+    assert model_matrix.dtype==np.complex128 or data_matrix.dtype==np.complex64
     assert flag_matrix.dtype==np.bool
     assert weights_matrix.shape==data_matrix.shape
     assert model_matrix.shape==weights_matrix.shape
@@ -179,10 +179,13 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
 
         while _eps>eps or niter[cycle]<=n_phase_iter:
             #print('_eps='+str(_eps))
-            gNumerator[:]=0.
-            gDenominator[:]=0.
+            gNumerator[:]=0j
+            gDenominator[:]=0j
             gainsG_temp[:]=gainsG[:]
             for nt in range(nTimes):
+                #print('data='+str(data_matrixG[nt][0]))
+                #print('model='+str(model_matrixG[nt][0]))
+                
                 zmat=np.diag(np.conj(gainsG)).dot(model_matrixG[nt])
                 if DEBUG:
                     print('gainsG.shape='+str(gainsG.shape))
