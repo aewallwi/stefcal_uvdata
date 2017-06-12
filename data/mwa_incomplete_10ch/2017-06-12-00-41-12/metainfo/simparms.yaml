@@ -1,0 +1,172 @@
+antenna:
+  ground_plane: 0.3
+  ocoords: altaz
+  orientation:
+  - 0
+  - 90
+  phased_array: true
+  shape: dipole
+  size: 0.78
+array:
+  file: null
+  filepathtype: default
+  layout: MWA-128T
+  maxR: 141.0
+  minR: 141.0
+  parser:
+    comment: null
+    data_end: null
+    data_start: 3
+    delimiter: null
+    east: East
+    header_start: 0
+    label: null
+    north: North
+    up: Up
+  redundant: false
+  rms_elevation: 0.0
+  rms_tgtplane: 0.0
+  seed: 200
+bandpass:
+  freq: 150000000.0
+  freq_resolution: 100000.0
+  nchan: 10
+  pfb_file: MWA_pfb_512x8.fits
+  pfb_filepath: default
+  pfb_method: null
+baseline:
+  direction: null
+  max: null
+  min: null
+beam:
+  chromatic: true
+  file: HERA_HFSS_X4Y2H_4900.hmap
+  filefmt: FITS
+  filepathtype: default
+  identifier: HERA-CST
+  pol: X
+  select_freq: 150000000.0
+  spec_interp: cubic
+  use_external: false
+catalog:
+  DSM_file_prefix: gsmdata
+  GLEAM_file: GLEAMIDR3.fits
+  MWACS_file: mwacs_b1_131016.csv
+  NVSS_file: NVSS_catalog.fits
+  SUMSS_file: sumsscat.Mar-11-2008.txt
+  custom_file: custom_catalog.txt
+  filepathtype: default
+diagnosis:
+  refresh_interval: null
+  wait_after_run: false
+dirstruct:
+  project: mwa_incomplete_10ch
+  rootdir: /csr/mwa/aaronew/mwa_sim/
+  simid: null
+fgparm:
+  21cmfast: false
+  epoch: '2000'
+  flux_max: null
+  flux_min: 5.0
+  flux_unit: K
+  fluxcut_reffreq: null
+  fsky: null
+  global_EoR_parms:
+  - 0.027
+  - 150e6
+  - 1.0
+  lidz: true
+  model: csm
+  nside: 256
+  spindex: -0.83
+  spindex_rms: 0.0
+  spindex_seed: null
+flags:
+  bp_flag_repeat: false
+  flag_chan: -1
+  flag_repeat_edge_channels: false
+  n_edge_flag:
+  - 0
+  - 0
+gains:
+  file: null
+  filepathtype: default
+obsparm:
+  n_acc: 1
+  obs_date: 2015/11/23
+  obs_mode: drift
+  t_acc: 1080.0
+  t_obs: null
+  timeformat: JD
+phasedarray:
+  delayerr: 0.0
+  file: MWA_tile_dipole_locations.txt
+  filepathtype: default
+  gainerr: 0.0
+  nrand: 1
+phasing:
+  center:
+  - 90.0
+  - 270.0
+  coords: altaz
+plots: false
+pointing:
+  drift_init:
+    alt: null
+    az: null
+    dec: -30.7224
+    ha: 0.0
+    lst: 0.0
+  file: null
+  track_init:
+    dec: -30.7224
+    epoch: '2000'
+    ha: 0.0
+    ra: 0.0
+pp:
+  eqvol: true
+  key: freq
+  method: pool
+preload:
+  template: null
+processing:
+  ant_bpass_file: null
+  bp_correct: true
+  bpass_shape: bhw
+  cleanup: 3
+  coarse_channel_width: 16
+  delay_transform: false
+  f_pad: 1.0
+  gradient_mode: null
+  max_abs_delay: 1.0
+  memsave: false
+  memuse: 60
+  n_bins_blo: 4
+  n_pad: 0
+  n_sky_sectors: 1
+  noise_bp_correct: false
+save_formats:
+  fmt: HDF5
+  npz: true
+  phase_center: null
+  uvfits: true
+  uvfits_method: null
+save_redundant: false
+snapshot:
+  all: true
+  avg_drifts: false
+  beam_switch: false
+  pick: null
+  range: null
+telescope:
+  A_eff: 154
+  Tant_freqref: 150000000.0
+  Tant_ref: 200.0
+  Tant_spindex: -2.55
+  Trx: 50.0
+  Tsys: null
+  altitude: 0.0
+  id: mwa
+  label_prefix: ''
+  latitude: -30.7224
+  longitude: 21.4278
