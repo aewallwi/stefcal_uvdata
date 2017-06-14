@@ -29,7 +29,12 @@ def correct_vis(uvdata,uvcal,applyGains=False):
     #print('data array before application='+str(corrected_vis.data_array))
     #print('gains='+str(uvcal.gain_array))
     #print('data type='+str(corrected_vis.data_array.dtype))
-    for ant in range(corrected_vis.Nants_data):
+    if uvdata.antenna_numbers.max()==len(uvdata.antenna_numbers):
+        indsub=1
+    else:
+        indsub=0
+    for ant in uvdata.antenna_numbers:
+        antind=ant-indsub
         for tnum in range(corrected_vis.Ntimes):
             selection=np.logical_and(corrected_vis.ant_2_array==ant,
                                      corrected_vis.time_array==uvcal.time_array[tnum])
@@ -38,12 +43,12 @@ def correct_vis(uvdata,uvcal,applyGains=False):
             for pol in range(corrected_vis.Npols):
                 for chan in range(corrected_vis.Nfreqs):
                     if applyGains:
-                        corrected_vis.data_array[selection_conj,0,chan,pol]*=np.conj(uvcal.gain_array[ant,0,chan,tnum,pol])
-                        corrected_vis.data_array[selection,0,chan,pol]*=uvcal.gain_array[ant,0,chan,tnum,pol]
+                        corrected_vis.data_array[selection_conj,0,chan,pol]*=np.conj(uvcal.gain_array[antind,0,chan,tnum,pol])
+                        corrected_vis.data_array[selection,0,chan,pol]*=uvcal.gain_array[antind,0,chan,tnum,pol]
                     else:
-                        corrected_vis.data_array[selection_conj,0,chan,pol]/=np.conj(uvcal.gain_array[ant,0,chan,tnum,pol])
-                        corrected_vis.data_array[selection,0,chan,pol]/=uvcal.gain_array[ant,0,chan,tnum,pol]
-                    added_flags=[uvcal.flag_array[ant,0,chan,tnum,pol] for m in range(len(selection[selection]))]
+                        corrected_vis.data_array[selection_conj,0,chan,pol]/=np.conj(uvcal.gain_array[antind,0,chan,tnum,pol])
+                        corrected_vis.data_array[selection,0,chan,pol]/=uvcal.gain_array[antind,0,chan,tnum,pol]
+                    added_flags=[uvcal.flag_array[antind,0,chan,tnum,pol] for m in range(len(selection[selection]))]
                     corrected_vis.flag_array[selection,0,chan,pol]=np.logical_or(corrected_vis.flag_array[selection,0,chan,pol],added_flags)
     #print('data array after application='+str(corrected_vis.data_array))
     return corrected_vis
@@ -218,7 +223,6 @@ class StefcalUVData():
         self.measured_vis.ant_2_array+=1
         self.model_vis.antenna_numbers+=1
         self.measured_vis.antenna_numbers+=1
-        
     def _load_miriad(self,dataname,modelname):
         '''
         read in miriad files
@@ -284,7 +288,7 @@ class StefcalUVData():
         \chi^2_i = \sum_{j,t} |v_{ij}-y_{i-j}g_i^*g_j |^2/\sigma_{ij}^2
         where \sigma_{ij}^2 at each frequency and baseline is estimated 
         """
-        antList=np.unique(self.measured_vis.antenna_numbers)
+        antList=self.measured_vis.antenna_numbers
         if antList.max()==len(antList):
             indsub=1
         else:
@@ -326,7 +330,7 @@ class StefcalUVData():
                     neff=np.sum(weight_select)/np.max(weight_select)
                     self.meta_params.dof[chan,tnum,pol]=neff-1
                     for antnum in self.measured_vis.antenna_numbers:
-                        selection_ant=np.logical_xor(np.logical_or(self.measured_vis.ant_1_array==antnum,
+                        selection_ant=np.logical_or(np.logical_xor(self.measured_vis.ant_1_array==antnum,
                                                                    self.measured_vis.ant_2_array==antnum),
                                                      self.measured_vis.time_array==\
                                                      self.uvcal.time_array[tnum])
@@ -518,8 +522,9 @@ class StefcalUVData():
         Returns: 
             blt_list, baseline-time ordered list
         """
+        iscomplex=(blt_matrix.dtype=='complex64' or blt_matrix.dtype=='complex128')
         timeList=np.unique(self.measured_vis.time_array)
-        antList=np.unique(self.measured_vis.antenna_numbers)
+        antList=self.measured_vis.antenna_numbers
         nAnt=len(antList)
         output=np.empty(self.measured_vis.Nblts,dtype=blt_matrix.dtype)
         for t_step in range(self.measured_vis.Ntimes):
@@ -531,10 +536,16 @@ class StefcalUVData():
                     a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
                                                self.measured_vis.ant_2_array==ant2)
                     if not(np.any(a_selection)):
-                        a_selection=np.logical_and(self.measured_vis.ant_1_array==ant1,
-                                                   self.measured_vis.ant_2_array==ant2)
+                        a_selection=np.logical_and(self.measured_vis.ant_1_array==ant2,
+                                                   self.measured_vis.ant_2_array==ant1)
+                        conjugate=True
+                    else:
+                        conjugate=False
+                            
                     selection=np.logical_and(a_selection,t_selection)
                     output[selection]=blt_matrix[t_step,antNum1,antNum2]
+                    if conjugate:
+                        output[selection]=np.conj(output[selection])
         return output
                     
         
@@ -547,8 +558,9 @@ class StefcalUVData():
             t_steps, integer time-steps defining Ntimes axis. 
             hermit, boolean, set true if output[a,b]=conj(output[b,a])
         """
+        iscomplex=(blt_list.dtype=='complex64' or blt_list.dtype=='complex128')
         timeList=np.unique(self.measured_vis.time_array)
-        antList=np.unique(self.measured_vis.antenna_numbers)
+        antList=self.measured_vis.antenna_numbers
         nT=len(t_steps)
         nAnt=len(antList)
         output=np.empty((nT,nAnt,nAnt),dtype=blt_list.dtype)
@@ -569,12 +581,19 @@ class StefcalUVData():
                     if not(np.any(a_selection)):
                         a_selection=np.logical_and(self.measured_vis.ant_1_array==ant2,
                                                    self.measured_vis.ant_2_array==ant1)
+                        conjugate=True
+                    else:
+                        conjugate=False
                     selection=np.logical_and(a_selection,t_selection)
                     output[ts,antNum1,antNum2]=blt_list[selection][0]
                     if hermit:
                         output[ts,antNum2,antNum1]=np.conj(blt_list[selection])[0]
                     else:
                         output[ts,antNum2,antNum1]=blt_list[selection][0]
+                    if conjugate and iscomplex:
+                        output[ts,antNum2,antNum1]=np.conj(output[ts,antNum2,antNum1])
+                        output[ts,antNum1,antNum2]=np.conj(output[ts,antNum1,antNum2])
+                                                           
         return output
 
     #Function to reinitialize from files and id
@@ -695,6 +714,11 @@ class StefcalUVData():
         Args: 
             parallilized, choose this if you want calibration to be parallelized across frequency channels
         '''
+        antinds=self.measured_vis.antenna_numbers
+        if antinds.max()==len(antinds):
+            indsub=1
+        else:
+            indsub=0
         #loop through polarization
         for pol in range(self.measured_vis.Npols):
             #for each channel and time-averaging step, 
@@ -729,8 +753,8 @@ class StefcalUVData():
                         print('gains.shape='+str(gains.shape))
                     self.meta_params.Niterations[tstep,:,chan,pol]=niter
                     for tsn,ts in enumerate(t_steps):
-                        self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
-                        self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
+                        self.uvcal.gain_array[antinds-indsub,self.meta_params.spw,chan,ts,pol]=gains
+                        self.uvcal.flag_array[antinds-indsub,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
                         #Need to translate back into blt list!
                         #if DEBUG:
                             #print('shape niterations='+str(self.meta_params.Niterations.shape))
