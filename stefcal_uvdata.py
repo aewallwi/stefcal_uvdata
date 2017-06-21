@@ -52,6 +52,24 @@ def correct_vis(uvdata,uvcal,applyGains=False):
                     corrected_vis.flag_array[selection,0,chan,pol]=np.logical_or(corrected_vis.flag_array[selection,0,chan,pol],added_flags)
     #print('data array after application='+str(corrected_vis.data_array))
     return corrected_vis
+
+#************************************************************
+#generate weights from baseline lengths
+#************************************************************
+def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False):
+    """
+    Generate gaussian weights for visibilities with 
+    w=exp(-|uvw|^2/(2 sigma_w^2)
+    Args:
+    sigma_w, standard deviation weighting parameter (meters) (float)
+    uvmodel, uvdata object containing data to generate weights from
+    modelweights, if True, multiply each weight by amplitude of visibility squared (optimal weighting for diagonal thermal noise). 
+    """
+    bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
+    if modelweights:
+        return np.exp(-bl_lengths**2./(2.*sigma_w**2.))*np.abs(uvmodel.model_array)**2.
+    else:
+        return np.exp(-bl_lengths**2./(2.*sigma_w**2.))*np.ones_like(uvmodel.model_array)**2.
     
 
 #************************************************************
@@ -609,8 +627,17 @@ class StefcalUVData():
         #save calibration solution
         if clobber:
             pickle.dump(self.uvcal,open(output_root+'_'+self.meta_params.id+'_cal',"wb"))
-        
 
+    def set_weights(self,weights):
+        """
+        set weights array
+        """
+        assert(self.cal_flag_weights.weights_array.shape==\
+               weights.shape)
+        assert(self.cal_flag_weights.weights_array.dtype==\
+               weights.dtype)
+        self.cal_flag_weights.weights_array=weights
+        
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
@@ -707,7 +734,8 @@ class StefcalUVData():
             self.set_refant(param_dict['refant'])
         if 't_avg' in input_keys:
             self.set_tavg(param_dict['t_avg'])
-        
+        if 'weights' in input_keys:
+            self.set_weights(param_dict['weights'])
     def stefcalibrate(self,perterb=0,parallelized=False):
         '''
         Run stefcal
