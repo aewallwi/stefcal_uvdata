@@ -67,10 +67,14 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False):
     """
     bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
     if modelweights:
-        return np.exp(-bl_lengths**2./(2.*sigma_w**2.))*np.abs(uvmodel.model_array)**2.
+        wbase=np.abs(uvmodel.data_array)**2.
     else:
-        return np.exp(-bl_lengths**2./(2.*sigma_w**2.))*np.ones_like(uvmodel.model_array)**2.
-    
+        wbase=np.ones_like(uvmodel.data_array)**2.
+    for pol in range(uvmodel.Npols):
+        for spw in range(uvmodel.Nspws):
+            for chan in range(uvmodel.Nfreqs):
+                wbase[:,spw,chan,pol]*=np.exp(-bl_lengths**2./(2.*sigma_w**2.))
+    return wbase
 
 #************************************************************
 #Need to store state IDs for different times
