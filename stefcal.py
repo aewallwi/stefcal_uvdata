@@ -47,7 +47,7 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
     
     flagsMatrixL=np.empty(nVis,dtype=bool);flagsMatrixL[:]=False
     
-    nEff=computeNeff(weights_matrix_c)
+    nEff=compute_neff(weights_matrix_c)
     nFlag=0
     nvis=0
 
@@ -60,7 +60,7 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
                 flagsMatrix_c[maxInd,i]=True
                 flagsMatrix_c[i,maxInd]=True
                 nFlag+=1        
-        nEff=computeNeff(weights_matrix_c)
+        nEff=compute_neff(weights_matrix_c)
     for i in range(len(vFlags)):
         for j in range(i):
             flagsMatrixL[nvis]=flagsMatrix_c[i,j]
