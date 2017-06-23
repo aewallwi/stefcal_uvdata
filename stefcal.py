@@ -131,8 +131,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     if trim_neff:
         for nt in range(data_matrix.shape[0]):
             _,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
-                                                                         weights_matrix[nt],
-                                                                         min_bl_per_ant)
+                                                                           flag_matrix[nt],
+                                                                           min_bl_per_ant)
     ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
     for m in range(nAnt):
         ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])<min_ant_times
