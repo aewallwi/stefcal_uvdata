@@ -56,7 +56,7 @@ def correct_vis(uvdata,uvcal,applyGains=False):
 #************************************************************
 #generate weights from baseline lengths
 #************************************************************
-def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False):
+def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-6):
     """
     Generate gaussian weights for visibilities with 
     w=exp(-|uvw|^2/(2 sigma_w^2)
@@ -74,7 +74,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False):
         for spw in range(uvmodel.Nspws):
             for chan in range(uvmodel.Nfreqs):
                 wbase[:,spw,chan,pol]*=np.exp(-bl_lengths**2./(2.*sigma_w**2.))
-    return wbase
+    return wbase+regularizer
 
 #************************************************************
 #Need to store state IDs for different times

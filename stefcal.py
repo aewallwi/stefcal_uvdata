@@ -19,14 +19,14 @@ def compute_neff(weights_matrix):
         nEff[antNum]=np.abs(weights_matrix[antNum,:]).sum()/np.abs(weights_matrix[antNum,:]).max()
     return nEff
 
-def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
+def flag_neff(weights_matrix,flags_matrix=None,threshold=2):
     '''
     given a weighting matrix, flag baselines until the effective
     of antennas for each antenna is greater than some threshold.
     Args: 
         weights_matrix, Nant x Nant numpy array of floats giving weights of 
         each vis in stefcal. 
-        flagsMatrix, Nant x Nant numpy array of booleans giving pre-existing
+        flags_matrix, Nant x Nant numpy array of booleans giving pre-existing
                      flags
     '''
     assert weights_matrix.dtype==float
@@ -36,16 +36,16 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
     nAnt= len(weights_matrix)
     nVis=nAnt*(nAnt-1)/2
     
-    if(flagsMatrix is None):
-        flagsMatrix_c=np.empty(weights_matrix_c.shape,dtype=bool);flagsMatrix_c[:]=False
+    if(flags_matrix is None):
+        flags_matrix_c=np.empty(weights_matrix_c.shape,dtype=bool);flags_matrix_c[:]=False
     else:
-        assert flagsMatrix.dtype==bool
-        assert flagsMatrix.shape==weights_matrix.shape
-        flagsMatrix_c=copy.copy(flagsMatrix)
-        weights_matrix_c[flagsMatrix_c]=0.
-    #flagsMatrixL is a list of visibility flags
+        assert flags_matrix.dtype==bool
+        assert flags_matrix.shape==weights_matrix.shape
+        flags_matrix_c=copy.copy(flags_matrix)
+        weights_matrix_c[flags_matrix_c]=0.
+    #flags_matrix_l is a list of visibility flags
     
-    flagsMatrixL=np.empty(nVis,dtype=bool);flagsMatrixL[:]=False
+    flags_matrix_l=np.empty(nVis,dtype=bool);flags_matrix_l[:]=False
     
     nEff=compute_neff(weights_matrix_c)
     nFlag=0
@@ -57,19 +57,19 @@ def flag_neff(weights_matrix,flagsMatrix=None,threshold=2):
                 maxInd=np.where(weights_matrix_c[i,:]==weights_matrix_c[i,:].max())[0][0]
                 weights_matrix_c[i,maxInd]=0.
                 weights_matrix_c[maxInd,i]=0.
-                flagsMatrix_c[maxInd,i]=True
-                flagsMatrix_c[i,maxInd]=True
+                flags_matrix_c[maxInd,i]=True
+                flags_matrix_c[i,maxInd]=True
                 nFlag+=1        
         nEff=compute_neff(weights_matrix_c)
-    for i in range(len(vFlags)):
+    for i in range(nAnt):
         for j in range(i):
-            flagsMatrixL[nvis]=flagsMatrix_c[i,j]
+            flags_matrix_l[nvis]=flags_matrix_c[i,j]
             nvis+=1
     antFlag=np.empty(weights_matrix.shape[0],dtype=bool)
     antFlag[:]=False
     for i in range(weights_matrix.shape[0]):
         antFlag[i]=np.all(weights_matrix_c[i,:]==0)
-    return nFlag,antFlag,weights_matrix_c,flagsMatrix_c,flagsMatrixL
+    return nFlag,antFlag,weights_matrix_c,flags_matrix_c,flags_matrix_l
                 
 
     
@@ -101,7 +101,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
         trim_neff: specify whether to try trimming baselines responsible for small
                    min_bl_per_ant. 
    Returns: 
-        ant_flags, Nant np array of boolean flags indicating antennas flagged
+        ant_flags, Nant np array of boolean flags indicating antennas flagged over all times
         flag_matrix, Ntime x Nant x Nant np array of boolean flags indicating 
                    baselines flagged. 
         niter, n_cycles np array of integers. Denotes number of iterations 
@@ -137,7 +137,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     for m in range(nAnt):
         ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])<min_ant_times
 
-
+    
 
     antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#the numbers of antennas not flagged
     #now run stefcal
@@ -216,7 +216,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     for nt in range(nTimes):
                         data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
                         data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
-    return ant_flags,ant_flags_combined,niter,gains
+    return ant_flags_combined,flag_matrix,niter,gains
                 
     
         
