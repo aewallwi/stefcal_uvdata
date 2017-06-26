@@ -69,7 +69,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     if modelweights:
         wbase=np.abs(uvmodel.data_array)**2.
     else:
-        wbase=np.ones_like(uvmodel.data_array)**2.
+        wbase=np.ones(uvmodel.data_array.shape)
     for pol in range(uvmodel.Npols):
         for spw in range(uvmodel.Nspws):
             for chan in range(uvmodel.Nfreqs):
@@ -632,10 +632,20 @@ class StefcalUVData():
         if clobber:
             pickle.dump(self.uvcal,open(output_root+'_'+self.meta_params.id+'_cal',"wb"))
 
+    def set_flag_gap(self,flag_gaps):
+        """
+        set whether visibilities with a single gap in 
+        should be flagged entirely
+        """
+        assert type(flag_gaps)==bool
+        self.meta_params.flag_gaps=flag_gaps
+            
     def set_weights(self,weights):
         """
         set weights array
         """
+        print weights.dtype
+        print self.cal_flag_weights.weights_array.dtype
         assert(self.cal_flag_weights.weights_array.shape==\
                weights.shape)
         assert(self.cal_flag_weights.weights_array.dtype==\
@@ -740,6 +750,8 @@ class StefcalUVData():
             self.set_tavg(param_dict['t_avg'])
         if 'weights' in input_keys:
             self.set_weights(param_dict['weights'])
+        if 'flag_gaps' in input_keys:
+            self.set_flag_gaps(param_dict['flag_gaps'])
     def stefcalibrate(self,perterb=0,parallelized=False):
         '''
         Run stefcal
@@ -790,9 +802,18 @@ class StefcalUVData():
                         #Need to translate back into blt list!
                         #if DEBUG:
                             #print('shape niterations='+str(self.meta_params.Niterations.shape))
-                        full_flags[ts,:,:]=flag_matrix
-            self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol]=np.logical_or(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol],
+                        full_flags[ts,:,:]=flag_matrix[tsn]
+                    print('any flags in flag_matrix?'+str(np.any(full_flags)))
+                self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol]=np.logical_or(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol],
                                                                                             self._matrix_2_blt_list(full_flags))
+                print('any flags?='+str(np.any(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol])))
+
+        if self.meta_params.flag_gaps:
+            for blt in range(self.cal_flag_weights.flag_array.shape[0]):
+                for pol in range(self.cal_flag_weights.flag_array.shape[-1]):
+                    for spw in range(self.cal_flag_weights.flag_array.shape[1]):
+                        self.cal_flag_weights.flag_array[blt,spw,:,pol]=np.any(self.cal_flag_weights.flag_array[blt,spw,:,pol])
+                           
             #compute chi-squares
         self._compute_chiSQ()
-            #get data, model, weights, flags
+        #get data, model, weights, flags
