@@ -133,11 +133,11 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             nf,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
                                                                             flag_matrix[nt],
                                                                             min_bl_per_ant)
-            print('nflagged='+str(nf))
-            print('ant_flags='+str(ant_flags[nt]))
-            print('new_weights='+str(weights_matrix[nt]))
-            print('any new flags?'+str(np.any(flag_matrix[nt])))
-            print('new_flags='+str(flag_matrix[nt]))
+            #print('nflagged='+str(nf))
+            #print('ant_flags='+str(ant_flags[nt]))
+            #print('new_weights='+str(weights_matrix[nt]))
+            #print('any new flags?'+str(np.any(flag_matrix[nt])))
+            #print('new_flags='+str(flag_matrix[nt]))
 
     ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
     for m in range(nAnt):

@@ -98,7 +98,7 @@ class StefcalUVData():
     def __init__(self,refant=0,n_phase_iter=5,
                  n_cycles=1,min_bl_per_ant=2,eps=1e-10,
                  min_ant_times=1,trim_neff=False,spw=0,
-                 t_avg=1):
+                 t_avg=1,flag_gaps=True):
         self.model_vis=UVData()
         self.measured_vis=UVData()
         self.uvcal=UVCal()
@@ -117,7 +117,7 @@ class StefcalUVData():
         self.meta_params.trim_neff=trim_neff
         self.meta_params.min_ant_times=min_ant_times
         self.cal_flag_weights=CalFlagWeights(self.meta_params.id)
-        
+        self.meta_params.flag_gaps=flag_gaps
         
     def _compare_model_data(self,model,data,compare_flags=False,compare_weights=False,compare_phase=False):
         """
@@ -793,8 +793,8 @@ class StefcalUVData():
                                                                              min_ant_times=self.meta_params.min_ant_times,
                                                                              trim_neff=self.meta_params.trim_neff,
                                                                              perterb=perterb)
-                    if DEBUG:
-                        print('gains.shape='+str(gains.shape))
+                    #if DEBUG:
+                        #print('gains.shape='+str(gains.shape))
                     self.meta_params.Niterations[tstep,:,chan,pol]=niter
                     for tsn,ts in enumerate(t_steps):
                         self.uvcal.gain_array[antinds-indsub,self.meta_params.spw,chan,ts,pol]=gains
@@ -803,17 +803,18 @@ class StefcalUVData():
                         #if DEBUG:
                             #print('shape niterations='+str(self.meta_params.Niterations.shape))
                         full_flags[ts,:,:]=flag_matrix[tsn]
-                    print('any flags in flag_matrix?'+str(np.any(full_flags)))
+                    #print('any flags in flag_matrix?'+str(np.any(full_flags)))
                 self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol]=np.logical_or(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol],
                                                                                             self._matrix_2_blt_list(full_flags))
-                print('any flags?='+str(np.any(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol])))
+                #print('any flags?='+str(np.any(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol])))
 
         if self.meta_params.flag_gaps:
+            print('flagging gaps')
             for blt in range(self.cal_flag_weights.flag_array.shape[0]):
                 for pol in range(self.cal_flag_weights.flag_array.shape[-1]):
                     for spw in range(self.cal_flag_weights.flag_array.shape[1]):
                         self.cal_flag_weights.flag_array[blt,spw,:,pol]=np.any(self.cal_flag_weights.flag_array[blt,spw,:,pol])
-                           
+            
             #compute chi-squares
         self._compute_chiSQ()
         #get data, model, weights, flags
