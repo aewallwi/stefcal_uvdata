@@ -82,8 +82,8 @@ def compute_neff(weights_array,mode='matrix',ant1List=None,ant2List=None):
     assert mode in ['matrix','blt_list']
     if mode == 'matrix':
         nEff=np.zeros(weights_array.shape[0])
-        for antNum in range(weights_array.shape[0]):
-            nEff[antNum]=np.abs(weights_array[antNum,:]).sum()/np.abs(weights_array[antNum,:]).max()
+        for antnum in range(weights_array.shape[0]):
+            nEff[antnum]=np.abs(weights_array[antnum,:]).sum()/np.abs(weights_array[antnum,:]).max()
         return nEff
     elif mode == 'blt_list':
         assert not(ant1List is None) and not(ant2List is None)
@@ -175,8 +175,8 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
         while(np.any(nEff<threshold)):
             for antnum in u_ants:
                 if nEff[ant_index[antnum]]<threshold:
-                    selection=np.logical_xor(ant1List==antNum,
-                                             ant2List==antNum)
+                    selection=np.logical_xor(ant1List==antnum,
+                                             ant2List==antnum)
                     maxind=np.where(weights_array_c[selection]==\
                                     weights_array_c[selection].max())[0][0]
                     weights_array_c[selection][maxind]=0.
@@ -187,8 +187,8 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
         antFlag=np.empty(nAnt,dtype=bool)
         antFlag[:]=False
         for antnum in u_ants:
-            selection=np.logical_xor(ant1List==antNum,
-                                     ant2List==antNum)
+            selection=np.logical_xor(ant1List==antnum,
+                                     ant2List==antnum)
             antFlag[i]=np.all(weights_array[selection]==0.)
         return nFlag,antFlag,weights_array_c,flags_array_c
         
