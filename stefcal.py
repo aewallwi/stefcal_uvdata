@@ -1,78 +1,9 @@
 import numpy as np
 import copy
+import stefcal_utils as utils
 DEBUG=False
 #from numba import jit
 
-
-
-def compute_neff(weights_matrix):
-    '''
-    computes the number of effective baselines per antenna for a weighting matrix wMat
-    Args:
-        weights_matrix, Nant x Nant matrix of floats
-    Returns:
-        Nant numpy array of floats giving the effective number of baselines per antenna. 
-    '''
-    
-    nEff=np.zeros(weights_matrix.shape[0])
-    for antNum in range(weights_matrix.shape[0]):
-        nEff[antNum]=np.abs(weights_matrix[antNum,:]).sum()/np.abs(weights_matrix[antNum,:]).max()
-    return nEff
-
-def flag_neff(weights_matrix,flags_matrix=None,threshold=2):
-    '''
-    given a weighting matrix, flag baselines until the effective
-    of antennas for each antenna is greater than some threshold.
-    Args: 
-        weights_matrix, Nant x Nant numpy array of floats giving weights of 
-        each vis in stefcal. 
-        flags_matrix, Nant x Nant numpy array of booleans giving pre-existing
-                     flags
-    '''
-    assert weights_matrix.dtype==float
-    assert weights_matrix.shape[0]==weights_matrix.shape[1]
-    
-    weights_matrix_c=copy.deepcopy(weights_matrix)
-    nAnt= len(weights_matrix)
-    nVis=nAnt*(nAnt-1)/2
-    
-    if(flags_matrix is None):
-        flags_matrix_c=np.empty(weights_matrix_c.shape,dtype=bool);flags_matrix_c[:]=False
-    else:
-        assert flags_matrix.dtype==bool
-        assert flags_matrix.shape==weights_matrix.shape
-        flags_matrix_c=copy.copy(flags_matrix)
-        weights_matrix_c[flags_matrix_c]=0.
-    #flags_matrix_l is a list of visibility flags
-    
-    flags_matrix_l=np.empty(nVis,dtype=bool);flags_matrix_l[:]=False
-    
-    nEff=compute_neff(weights_matrix_c)
-    nFlag=0
-    nvis=0
-
-    while(np.any(nEff<threshold)):
-        for i in range(weights_matrix_c.shape[0]):
-            if(nEff[i]<threshold):
-                maxInd=np.where(weights_matrix_c[i,:]==weights_matrix_c[i,:].max())[0][0]
-                weights_matrix_c[i,maxInd]=0.
-                weights_matrix_c[maxInd,i]=0.
-                flags_matrix_c[maxInd,i]=True
-                flags_matrix_c[i,maxInd]=True
-                nFlag+=1        
-        nEff=compute_neff(weights_matrix_c)
-    for i in range(nAnt):
-        for j in range(i):
-            flags_matrix_l[nvis]=flags_matrix_c[i,j]
-            nvis+=1
-    antFlag=np.empty(weights_matrix.shape[0],dtype=bool)
-    antFlag[:]=False
-    for i in range(weights_matrix.shape[0]):
-        antFlag[i]=np.all(weights_matrix_c[i,:]==0)
-    return nFlag,antFlag,weights_matrix_c,flags_matrix_c,flags_matrix_l
-                
-
-    
 def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     refant=0,n_phase_iter=5,n_cycles=1,min_bl_per_ant=2,
                     eps=1e-10,min_ant_times=1,trim_neff=False,perterb=0.):
@@ -126,13 +57,13 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
 
 
     for nt in range(nTimes):
-        ant_flags[nt][compute_neff(weights_matrix)<min_bl_per_ant]=True
+        ant_flags[nt][utils.compute_neff(weights_matrix)<min_bl_per_ant]=True
     
-    if trim_neff:
-        for nt in range(data_matrix.shape[0]):
-            nf,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
-                                                                            flag_matrix[nt],
-                                                                            min_bl_per_ant)
+    #if trim_neff:
+    #    for nt in range(data_matrix.shape[0]):
+    #        nf,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
+    #                                                                        flag_matrix[nt],
+    #                                                                        min_bl_per_ant)
             #print('nflagged='+str(nf))
             #print('ant_flags='+str(ant_flags[nt]))
             #print('new_weights='+str(weights_matrix[nt]))
@@ -222,7 +153,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     for nt in range(nTimes):
                         data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
                         data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
-    return ant_flags_combined,flag_matrix,niter,gains
+    return ant_flags_combined,niter,gains
                 
     
         
