@@ -26,7 +26,10 @@ class StefcalMeta():
         desc='Reference antenna'
         self._refant=uvp.UVParameter('refant',description=desc,
                                      expected_type=int)
-        
+
+        desc='If a visibility has a single flag in it (in freq axis) then flag all freqs'
+        self._flag_gaps=uvp.UVParameter('flag_gaps',description=desc,
+                                        expected_type=bool)
         desc='Number of iterations in which only the phase is fitted.'
         self._n_phase_iter=uvp.UVParameter('n_phase_iter',description=desc,
                                            expected_type=int)

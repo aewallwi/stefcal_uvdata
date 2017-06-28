@@ -595,10 +595,10 @@ class StefcalUVData():
                             selection=self.measured_vis.time_array==time
                             _,_,_,self.cal_flag_weights.flag_array[selection,spw,chan,pol]=\
                             utils.flag_neff(self.cal_flag_weights.weights_array[selection,spw,chan,pol],
-                                            self.cal_flag_weights.flags_array[selection,spw,chan,pol],
+                                            self.cal_flag_weights.flag_array[selection,spw,chan,pol],
                                             mode='blt_list',
-                                            ant1List=self.measured_vis.ant1_array[selection],
-                                            ant2List=self.measured_vis.ant2_array[selection])
+                                            ant1List=self.measured_vis.ant_1_array[selection],
+                                            ant2List=self.measured_vis.ant_2_array[selection])
         if self.meta_params.flag_gaps:
             for blt in range(self.cal_flag_weights.flag_array.shape[0]):
                 for pol in range(self.cal_flag_weights.flag_array.shape[-1]):

@@ -2,7 +2,6 @@
 import numpy as np
 import copy
 from pyuvdata import UVCal
-from 
 #************************************************************
 #Generate a corrected uvdata set. 
 #************************************************************
@@ -92,10 +91,13 @@ def compute_neff(weights_array,mode='matrix',ant1List=None,ant2List=None):
         u_ant=np.unique(np.vstack([ant1List,ant2List]))
         nEff=np.zeros(len(u_ant))
         n_ant=len(u_ant)
+        ant_index={}
+        for index,antnum in enumerate(u_ant):
+            ant_index[antnum]=index
         for antnum in u_ant:
             selection=np.logical_xor(ant1List==antnum,ant2List==antnum)
             maxval=np.max(np.abs(weights_array[selection]))
-            nEff[antnum]=np.sum(np.abs(weights_array[selection]))/maxval
+            nEff[ant_index[antnum]]=np.sum(np.abs(weights_array[selection]))/maxval
         return nEff
             
 
@@ -162,21 +164,24 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
         assert len(weights_array)==len(flags_array)
         weights_array_c=copy.deepcopy(weights_array)
         u_ants=np.unique(np.vstack([ant1List,ant2List]))
+        ant_index={}
+        for ind,antnum in enumerate(u_ants):
+            ant_index[antnum]=ind
 
         nAnt=len(u_ants)
         nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
         nFlag=0
 
-        while(np.any(nEff<nthreshold)):
+        while(np.any(nEff<threshold)):
             for antnum in u_ants:
-                if nEff[antNum]<threshold:
+                if nEff[ant_index[antnum]]<threshold:
                     selection=np.logical_xor(ant1List==antNum,
                                              ant2List==antNum)
-                maxind=np.where(weights_array_c[selection]==\
-                                weights_array_c[selection].max())[0][0]
-                weights_array_c[selection][maxind]=0.
-                flags_array_c[selection][maxind]=True
-                nFlag+=1
+                    maxind=np.where(weights_array_c[selection]==\
+                                    weights_array_c[selection].max())[0][0]
+                    weights_array_c[selection][maxind]=0.
+                    flags_array_c[selection][maxind]=True
+                    nFlag+=1
             nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
             
         antFlag=np.empty(nAnt,dtype=bool)
