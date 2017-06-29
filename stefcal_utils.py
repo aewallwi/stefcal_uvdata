@@ -59,7 +59,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     """
     bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
     if modelweights:
-        wbase=np.abs(uvmodel.data_array)**2.
+        wbase=np.abs(uvmodel.data_array)**2./(np.abs(uvmodel.data_array).max())**2.
     else:
         wbase=np.ones(uvmodel.data_array.shape)
     for pol in range(uvmodel.Npols):
@@ -148,7 +148,7 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
                     flags_array_c[maxInd,i]=True
                     flags_array_c[i,maxInd]=True
                     nFlag+=1        
-            nEff=compute_neff(weights_array_c,mode)
+                    nEff=compute_neff(weights_array_c,mode)
         for i in range(nAnt):
             for j in range(i):
                 flags_array_l[nvis]=flags_array_c[i,j]
@@ -161,7 +161,7 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
     elif mode=='blt_list':
         assert not(ant1List is None) and not(ant2List is None)
         assert len(ant1List)==len(ant2List); assert len(ant1List)==len(weights_array)
-        assert len(weights_array)==len(flags_array)
+        assert len(weights_array)==len(flags_array_c)
         weights_array_c=copy.deepcopy(weights_array)
         u_ants=np.unique(np.vstack([ant1List,ant2List]))
         ant_index={}
@@ -177,19 +177,24 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
                 if nEff[ant_index[antnum]]<threshold:
                     selection=np.logical_xor(ant1List==antnum,
                                              ant2List==antnum)
-                    maxind=np.where(weights_array_c[selection]==\
-                                    weights_array_c[selection].max())[0][0]
-                    weights_array_c[selection][maxind]=0.
-                    flags_array_c[selection][maxind]=True
+                    temp=weights_array_c[selection]
+                    temp_f=flags_array_c[selection]
+                    maxind=np.where(temp==temp.max())[0][0]
+                    temp[maxind]=0.
+                    temp_f[maxind]=True
+                    weights_array_c[selection]=temp
+                    flags_array_c[selection]=temp_f
                     nFlag+=1
-            nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
-            
+                    nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
+            print('neff.min='+str(nEff.min()))
+            print('nflag='+str(nFlag))
+            #print('nEff='+str(nEff))
         antFlag=np.empty(nAnt,dtype=bool)
         antFlag[:]=False
         for antnum in u_ants:
             selection=np.logical_xor(ant1List==antnum,
                                      ant2List==antnum)
-            antFlag[i]=np.all(weights_array[selection]==0.)
+            antFlag[ant_index[antnum]]=np.all(weights_array[selection]==0.)
         return nFlag,antFlag,weights_array_c,flags_array_c
         
     
