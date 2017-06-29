@@ -604,6 +604,7 @@ class StefcalUVData():
                 for pol in range(self.cal_flag_weights.flag_array.shape[-1]):
                     for spw in range(self.cal_flag_weights.flag_array.shape[1]):
                         self.cal_flag_weights.flag_array[blt,spw,:,pol]=np.any(self.cal_flag_weights.flag_array[blt,spw,:,pol])
+        print ('flags set')
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
