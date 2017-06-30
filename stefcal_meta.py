@@ -48,7 +48,7 @@ class StefcalMeta():
         
         #desc='flag whether neff trimming was employed'
         #self._trim_neff=uvp.UVParameter('trim_neff',description=desc,
-                                        expected_type=bool)
+        #expected_type=bool)
         
         desc='unique identifier linking meta-data to calibration solutions and'
         'flag weights file'
