@@ -27,8 +27,8 @@ class StefcalMeta():
         self._refant=uvp.UVParameter('refant',description=desc,
                                      expected_type=int)
 
-        desc='If a visibility has a single flag in it (in freq axis) then flag all freqs'
-        self._flag_gaps=uvp.UVParameter('flag_gaps',description=desc,
+        #desc='If a visibility has a single flag in it (in freq axis) then flag all freqs'
+        #self._flag_gaps=uvp.UVParameter('flag_gaps',description=desc,
                                         expected_type=bool)
         desc='Number of iterations in which only the phase is fitted.'
         self._n_phase_iter=uvp.UVParameter('n_phase_iter',description=desc,
@@ -46,8 +46,8 @@ class StefcalMeta():
         self._min_ant_times=uvp.UVParameter('min_ant_times',description=desc,
                                             expected_type=int)
         
-        desc='flag whether neff trimming was employed'
-        self._trim_neff=uvp.UVParameter('trim_neff',description=desc,
+        #desc='flag whether neff trimming was employed'
+        #self._trim_neff=uvp.UVParameter('trim_neff',description=desc,
                                         expected_type=bool)
         
         desc='unique identifier linking meta-data to calibration solutions and'
@@ -176,7 +176,7 @@ class StefcalMeta():
         self.min_bl_per_ant=copy.copy(data.min_bl_per_ant)
         self.eps=copy.copy(data.eps)
         self.min_ant_times=copy.copy(data.min_ant_times)
-        self.trim_neff=copy.copy(data.trim_neff)
+        #self.trim_neff=copy.copy(data.trim_neff)
         self.id=copy.copy(data.id)
         self.flag_weights_file=copy.copy(data.flag_weights_file)
         self.model_file=copy.copy(data.model_file)

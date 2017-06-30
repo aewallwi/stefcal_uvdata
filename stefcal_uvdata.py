@@ -33,8 +33,8 @@ class StefcalUVData():
     
     def __init__(self,refant=0,n_phase_iter=5,
                  n_cycles=1,min_bl_per_ant=2,eps=1e-10,
-                 min_ant_times=1,trim_neff=False,spw=0,
-                 t_avg=1,flag_gaps=True):
+                 min_ant_times=1,spw=0,
+                 t_avg=1):
         self.model_vis=UVData()
         self.measured_vis=UVData()
         self.uvcal=UVCal()
@@ -50,10 +50,9 @@ class StefcalUVData():
         self.meta_params.eps=eps
         self.meta_params.spw=spw
         self.meta_params.t_avg=t_avg
-        self.meta_params.trim_neff=trim_neff
+        #self.meta_params.trim_neff=trim_neff
         self.meta_params.min_ant_times=min_ant_times
         self.cal_flag_weights=CalFlagWeights(self.meta_params.id)
-        self.meta_params.flag_gaps=flag_gaps
         
     def _compare_model_data(self,model,data,compare_flags=False,compare_weights=False,compare_phase=False):
         """
@@ -568,43 +567,16 @@ class StefcalUVData():
         if clobber:
             pickle.dump(self.uvcal,open(output_root+'_'+self.meta_params.id+'_cal',"wb"))
 
-    def set_flag_gap(self,flag_gaps):
-        """
-        set whether visibilities with a single gap in 
-        should be flagged entirely
-        """
-        assert type(flag_gaps)==bool
-        self.meta_params.flag_gaps=flag_gaps
-            
+                
     def set_weights(self,weights):
         """
         set weights array
         """
-        print weights.dtype
-        print self.cal_flag_weights.weights_array.dtype
         assert(self.cal_flag_weights.weights_array.shape==\
                weights.shape)
         assert(self.cal_flag_weights.weights_array.dtype==\
                weights.dtype)
         self.cal_flag_weights.weights_array=weights
-        if self.meta_params.trim_neff:
-            for chan in range(self.measured_vis.Nfreqs):
-                for pol in range(self.measured_vis.Npols):
-                    for spw in range(self.measured_vis.Nspws):
-                        for time in self.uvcal.time_array:
-                            selection=self.measured_vis.time_array==time
-                            _,_,_,self.cal_flag_weights.flag_array[selection,spw,chan,pol]=\
-                            utils.flag_neff(self.cal_flag_weights.weights_array[selection,spw,chan,pol],
-                                            self.cal_flag_weights.flag_array[selection,spw,chan,pol],
-                                            mode='blt_list',
-                                            ant1List=self.measured_vis.ant_1_array[selection],
-                                            ant2List=self.measured_vis.ant_2_array[selection])
-        if self.meta_params.flag_gaps:
-            for blt in range(self.cal_flag_weights.flag_array.shape[0]):
-                for pol in range(self.cal_flag_weights.flag_array.shape[-1]):
-                    for spw in range(self.cal_flag_weights.flag_array.shape[1]):
-                        self.cal_flag_weights.flag_array[blt,spw,:,pol]=np.any(self.cal_flag_weights.flag_array[blt,spw,:,pol])
-        print ('flags set')
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
@@ -662,11 +634,11 @@ class StefcalUVData():
         set min_ant_times, int
         """
         self.meta_params.min_ant_times=min_ant_times
-    def set_trim_neff(self,trim_neff):
-        """
-        set trim_neff, bool
-        """
-        self.meta_params.trim_neff=trim_neff
+    #def set_trim_neff(self,trim_neff):
+    #    """
+    #    set trim_neff, bool
+    #    """
+    #    self.meta_params.trim_neff=trim_neff
 
     def set_params(self,param_dict):
         """
@@ -685,8 +657,8 @@ class StefcalUVData():
             refant: int, the reference antenna
         """
         input_keys=param_dict.keys()
-        if 'trim_neff' in input_keys:
-            self.set_trim_neff(param_dict['trim_neff'])
+        #if 'trim_neff' in input_keys:
+        #    self.set_trim_neff(param_dict['trim_neff'])
         if 'min_ant_times' in input_keys:
             self.set_min_ant_times(param_dict['min_ant_times'])
         if 'eps' in input_keys:
@@ -703,8 +675,7 @@ class StefcalUVData():
             self.set_tavg(param_dict['t_avg'])
         if 'weights' in input_keys:
             self.set_weights(param_dict['weights'])
-        if 'flag_gaps' in input_keys:
-            self.set_flag_gaps(param_dict['flag_gaps'])
+
     def stefcalibrate(self,perterb=0,parallelized=False):
         '''
         Run stefcal
@@ -744,7 +715,7 @@ class StefcalUVData():
                                                                  min_bl_per_ant=self.meta_params.min_bl_per_ant,
                                                                  eps=self.meta_params.eps,
                                                                  min_ant_times=self.meta_params.min_ant_times,
-                                                                 trim_neff=self.meta_params.trim_neff,
+                                                                 #trim_neff=self.meta_params.trim_neff,
                                                                  perterb=perterb)
                     #if DEBUG:
                         #print('gains.shape='+str(gains.shape))

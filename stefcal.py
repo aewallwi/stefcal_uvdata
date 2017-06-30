@@ -6,7 +6,7 @@ DEBUG=False
 
 def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     refant=0,n_phase_iter=5,n_cycles=1,min_bl_per_ant=2,
-                    eps=1e-10,min_ant_times=1,trim_neff=False,perterb=0.):
+                    eps=1e-10,min_ant_times=1,perterb=0.):
     '''
     2-basic stefcal algorithm described in Salvini et al. 
     Args:
@@ -147,12 +147,12 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             #        print('len(gNumerator)='+str(len(gNumerator)))
 
             niter[cycle]+=1.
-            for n in range(nAntG):
-                gains[antNumbers[n]]*=gainsG[n]
-                for m in range(n):
-                    for nt in range(nTimes):
-                        data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
-                        data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
+        for n in range(nAntG):
+            gains[antNumbers[n]]*=gainsG[n]
+            for m in range(n):
+                for nt in range(nTimes):
+                    data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
+                    data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
     return ant_flags_combined,niter,gains
                 
     

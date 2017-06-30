@@ -48,7 +48,7 @@ def correct_vis(uvdata,uvcal,applyGains=False):
 #************************************************************
 #generate weights from baseline lengths
 #************************************************************
-def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-6):
+def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-6,trim_neff=True):
     """
     Generate gaussian weights for visibilities with 
     w=exp(-|uvw|^2/(2 sigma_w^2)
@@ -58,6 +58,27 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     modelweights, if True, multiply each weight by amplitude of visibility squared (optimal weighting for diagonal thermal noise). 
     """
     bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
+    avg_amp=np.exp(-bl_lengths**2./(2.*sigma_w**2.))+regularizer
+    bl_flags=np.empty(uvdata.data_array.shape,dtype=bool)
+    bl_flags[:]=False
+    if trim_neff:
+        n_flag,ant_flags,avg_amp,avg_flags=flag_neff(avg_amp,
+                                                     bl_flags,
+                                                     mode='blt_list',
+                                                     ant1List=uvmodel.ant_1_array,
+                                                     ant2List=uvmodel.ant_2_array)
+        
+        print('nflag='+str(nFlag))
+    else:
+        avg_flags=np.empty(bl_flags.shape[0],dtype=bool)
+        avg_flags[:]=False
+    for blt in range(anv_flags.shape[0]):
+        bl_flags[blt,:,:,:]=avg_flags[blt]
+        
+
+
+        
+            
     if modelweights:
         wbase=np.abs(uvmodel.data_array)**2./(np.abs(uvmodel.data_array).max())**2.
     else:
@@ -65,8 +86,8 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     for pol in range(uvmodel.Npols):
         for spw in range(uvmodel.Nspws):
             for chan in range(uvmodel.Nfreqs):
-                wbase[:,spw,chan,pol]*=np.exp(-bl_lengths**2./(2.*sigma_w**2.))
-    return wbase+regularizer
+                wbase[:,spw,chan,pol]*=avg_amp
+    return n_flag,ant_flags,bl_flags,wbase
 
 
 
@@ -185,9 +206,9 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
                     weights_array_c[selection]=temp
                     flags_array_c[selection]=temp_f
                     nFlag+=1
-                    nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
-            print('neff.min='+str(nEff.min()))
-            print('nflag='+str(nFlag))
+            nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
+        print('neff.min='+str(nEff.min()))
+        print('nflag='+str(nFlag))
             #print('nEff='+str(nEff))
         antFlag=np.empty(nAnt,dtype=bool)
         antFlag[:]=False
