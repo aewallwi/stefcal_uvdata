@@ -61,21 +61,24 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     avg_amp=np.exp(-bl_lengths**2./(2.*sigma_w**2.))+regularizer
     bl_flags=np.empty(uvmodel.data_array.shape,dtype=bool)
     bl_flags[:]=False
-    u_times=np.unique(uvmode.time_array)
+    u_times=np.unique(uvmodel.time_array)
+    ant_flags=np.empty((uvmodel.Ntimes,uvmodel.Nants_data),dtype=bool)
+    ant_flags[:]=False
+    avg_flags=np.empty((uvmodel.Ntimes,uvmodel.Nblts),dtype=bool)
+    avg_flags[:]=False
     if trim_neff:
-        for time in u_times:
+        for nt,time in enumerate(u_times):
             selection=uvmodel.time_array==time
-            n_flag,ant_flags,avg_amp[selection],avg_flags[selection]=flag_neff(avg_amp,
-                                                                               bl_flags[selection,0,0,0],
-                                                                               mode='blt_list',
-                                                                               ant1List=uvmodel.ant_1_array[selection],
-                                                                               ant2List=uvmodel.ant_2_array[selection])
-    else:
-        avg_flags=np.empty(bl_flags.shape[0],dtype=bool)
-        avg_flags[:]=False
-    for blt in range(anv_flags.shape[0]):
-        bl_flags[blt,:,:,:]=avg_flags[blt]
-        
+            n_flag,ant_flags[nt],avg_amp[selection],avg_flags[nt]=flag_neff(avg_amp,
+                                                                        bl_flags[selection,0,0,0],
+                                                                        mode='blt_list',
+                                                                        ant1List=uvmodel.ant_1_array[selection],
+                                                                        ant2List=uvmodel.ant_2_array[selection])
+    for pol in range(uvmodel.Npols):
+        for chan in range(uvmodel.Nfreqs):
+            for spw in range(uvmodel.Nspws):
+                bl_flags[:,spw,chan,pol]=avg_flags
+                
 
 
         

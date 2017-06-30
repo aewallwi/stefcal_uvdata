@@ -574,9 +574,17 @@ class StefcalUVData():
         """
         assert(self.cal_flag_weights.weights_array.shape==\
                weights.shape)
-        assert(self.cal_flag_weights.weights_array.dtype==\
-               weights.dtype)
+        assert(weights.dtype==float64)
         self.cal_flag_weights.weights_array=weights
+
+    def set_flags(self,flags):
+        """
+        set flags array
+        """
+        assert(self.cal_flag_weights.flags_array.shape==\
+               flags.shape)
+        assert flags.dtype==bool
+        aself.cal_flag_weights.flag_array=flags
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
@@ -655,6 +663,7 @@ class StefcalUVData():
                       to bring maximum difference between successive iterations below eps.
             n_phase_iter: int, number of iterations to execute per cycle in which on the phase is solved for
             refant: int, the reference antenna
+            flags: bool, Nblts x Nspws x Nfreqs x Npols
         """
         input_keys=param_dict.keys()
         #if 'trim_neff' in input_keys:
@@ -675,7 +684,8 @@ class StefcalUVData():
             self.set_tavg(param_dict['t_avg'])
         if 'weights' in input_keys:
             self.set_weights(param_dict['weights'])
-
+        if 'flags' in input_keys:
+            self.set_flags(param_dict['flags'])
     def stefcalibrate(self,perterb=0,parallelized=False):
         '''
         Run stefcal
