@@ -574,17 +574,17 @@ class StefcalUVData():
         """
         assert(self.cal_flag_weights.weights_array.shape==\
                weights.shape)
-        assert(weights.dtype==float64)
+        assert(weights.dtype==np.float64)
         self.cal_flag_weights.weights_array=weights
 
     def set_flags(self,flags):
         """
         set flags array
         """
-        assert(self.cal_flag_weights.flags_array.shape==\
+        assert(self.cal_flag_weights.flag_array.shape==\
                flags.shape)
         assert flags.dtype==bool
-        aself.cal_flag_weights.flag_array=flags
+        self.cal_flag_weights.flag_array=flags
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
