@@ -59,7 +59,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     """
     bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
     avg_amp=np.exp(-bl_lengths**2./(2.*sigma_w**2.))+regularizer
-    bl_flags=np.empty(uvdata.data_array.shape,dtype=bool)
+    bl_flags=np.empty(uvmodel.data_array.shape,dtype=bool)
     bl_flags[:]=False
     if trim_neff:
         n_flag,ant_flags,avg_amp,avg_flags=flag_neff(avg_amp,
