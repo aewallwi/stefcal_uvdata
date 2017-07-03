@@ -56,8 +56,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
 
 
-    for nt in range(nTimes):
-        ant_flags[nt][utils.compute_neff(weights_matrix)<min_bl_per_ant]=True
+    #for nt in range(nTimes):
+    #   ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
     
     #if trim_neff:
     #    for nt in range(data_matrix.shape[0]):
@@ -137,7 +137,12 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                 gainsG=gainsG*np.abs(gainsG_temp)/np.abs(gainsG)
             gainsG=gainsG_temp/2.+gainsG/2. 
             gainsG*=np.conj(gainsG[refant])/np.abs(gainsG[refant])
-            _eps=np.abs(gainsG-gainsG_temp).max()
+            _eps_angle=np.abs(np.angle(gainsG)-np.angle(gainsG_temp)).max()
+            _eps_abs=np.abs(gainsG-gainsG_temp).max()
+            if(_eps_abs>_eps_angle):
+                _eps=_eps_abs
+            else:
+                _eps=_eps_angle
             #if DEBUG:
             #    print('_eps='+str(_eps))
             #    if np.isnan(_eps):
