@@ -64,16 +64,16 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     u_times=np.unique(uvmodel.time_array)
     ant_flags=np.empty((uvmodel.Ntimes,uvmodel.Nants_data),dtype=bool)
     ant_flags[:]=False
-    avg_flags=np.empty((uvmodel.Ntimes,uvmodel.Nblts),dtype=bool)
+    avg_flags=np.empty(uvmodel.Nblts,dtype=bool)
     avg_flags[:]=False
     if trim_neff:
         for nt,time in enumerate(u_times):
             selection=uvmodel.time_array==time
-            n_flag,ant_flags[nt],avg_amp[selection],avg_flags[nt]=flag_neff(avg_amp,
-                                                                        bl_flags[selection,0,0,0],
-                                                                        mode='blt_list',
-                                                                        ant1List=uvmodel.ant_1_array[selection],
-                                                                        ant2List=uvmodel.ant_2_array[selection])
+            n_flag,ant_flags[nt],avg_amp[selection],avg_flags[selection]=flag_neff(avg_amp,
+                                                                                   bl_flags[selection,0,0,0],
+                                                                                   mode='blt_list',
+                                                                                   ant1List=uvmodel.ant_1_array[selection],
+                                                                                   ant2List=uvmodel.ant_2_array[selection])
     for pol in range(uvmodel.Npols):
         for chan in range(uvmodel.Nfreqs):
             for spw in range(uvmodel.Nspws):
