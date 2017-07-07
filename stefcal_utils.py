@@ -58,7 +58,8 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     modelweights, if True, multiply each weight by amplitude of visibility squared (optimal weighting for diagonal thermal noise). 
     """
     bl_lengths=np.linalg.norm(uvmodel.uvw_array,axis=1)
-    avg_amp=np.exp(-bl_lengths**2./(2.*sigma_w**2.))+regularizer
+    avg_amp=np.exp(-bl_lengths**2./(2.*sigma_w**2.))
+    avg_amp[avg_amp<regularizer]=regularizer
     bl_flags=np.empty(uvmodel.data_array.shape,dtype=bool)
     bl_flags[:]=False
     u_times=np.unique(uvmodel.time_array)
