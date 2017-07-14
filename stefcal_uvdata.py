@@ -163,7 +163,7 @@ class StefcalUVData():
         args: dataname, name of the fhd file
         '''
         self.model_vis.read_fhd(dataname)
-        self.measured_vis.read_fhd(modelname)
+        self.measured_vis.read_fhd(modelname,use_model=True)
         
     def _load_uvfits(self,dataname, modelname):
         '''
