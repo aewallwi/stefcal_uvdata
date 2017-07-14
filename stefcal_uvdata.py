@@ -339,7 +339,7 @@ class StefcalUVData():
             self.__load_miriad(data,model)
             self.meta_params.model_file=model
         elif mode=='FHD':
-            self._load_fhd(data)
+            self._load_fhd(data,model)
         if(flag_weights_fromdata):
             self.cal_flag_weights.from_file(self.measured_vis,mode='UVDATA')
             self.meta_params.flag_weights_file=data
@@ -442,7 +442,7 @@ class StefcalUVData():
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
                          model=miriadmodel)
-    def from_fhd(self,fhdfile,flag_weights_fromdata,flagweightsfile=None):
+    def from_fhd(self,fhddata,fhdmodel,flag_weights_fromdata,flagweightsfile=None):
         """
         initialize stefcal from a fhd
         args:
@@ -451,9 +451,10 @@ class StefcalUVData():
                                    the flagweights object from the measurement set
              flagweightsfile, initialize flagweights from external file. 
         """
-        self._read_files(fhdfile,mode='FHD',
+        self._read_files(fhddata,mode='FHD',
                          flag_weights_fromdata=flag_weights_fromdata,
-                         flagweightsfile=flagweightsfile)
+                         flagweightsfile=flagweightsfile,
+                         model=fhdmodel)
         
     def from_uvfits(self,uvfitsdata,uvfitsmodel,flag_weights_fromdata,flagweightsfile=None):
         """
