@@ -156,7 +156,14 @@ class StefcalUVData():
         #need to throw an error here if the model column does not exist
         self.model_vis.read_ms(msname,columnname='MODEL')
         self.measured_vis.read_ms(msname,columnname='DATA')
-        
+
+    def _load_ms(self,dataname):
+        '''
+        read in visiblity files for ms files
+        args: dataname, name of measurement set
+        '''
+        self.model_vis.read_ms(dataname,data_column='MODEL')
+        self.measured_vis.read_ms(dataname,data_column='DATA')
     def _load_fhd(self,dataname,modelname):
         '''
         read in fhd visibility files
@@ -318,7 +325,7 @@ class StefcalUVData():
                         neff_ant=np.sum(weight_ant_select)/np.max(weight_ant_select)
                         self.meta_params.dof_per_ant[antnum-indsub,chan,tnum,pol]=neff_ant-1
         self.uvcal.quality_array=self.meta_params.chi_square_per_ant/self.meta_params.dof_per_ant
-    def _read_files(self,data,mode,flag_weights_fromdata,flagweightsfile=None,model=None):
+    def _read_files(self,data,mode,flag_weights_fromdata,flagweightsfile=None,model=None,selection={}):
         '''
         read in all files including data,model,calibration weights
         args: 
@@ -340,6 +347,43 @@ class StefcalUVData():
             self.meta_params.model_file=model
         elif mode=='FHD':
             self._load_fhd(data,model)
+        #perform selection operations:
+        if not 'antenna_nums' in selection.keys():
+            selection['antenna_nums']=None
+        if not 'antenna_names' in selection.keys():
+            selection['antenna_names']=None
+        if not 'ant_pairs_nums' in selection.keys():
+            selection['ant_pairs_nums']=None
+        if not 'frequencies' in selection.keys():
+            selection['frequencies']=None
+        if not 'freq_chans' in selection.keys():
+            selection['freq_chans']=None
+        if not 'times' in selection.keys():
+            selection['times']=None
+        if not 'polarizations' in selection.keys():
+            selection['polarizations']=None
+        if not 'blt_inds' in selection.keys():
+            selection['blt_inds']=None
+        self.model_vis.select(antenna_nums=selection['antenna_nums'],
+                              ant_pairs_nums=selection['ant_pairs_nums'],
+                              frequencies=selection['frequencies'],
+                              freq_chans=selection['freq_chans'],
+                              times=selection['times'],
+                              polarizations=selection['polarizations'],
+                              blt_inds=selection['blt_inds'])
+        self.measured_vis.select(antenna_nums=selection['antenna_nums'],
+                                 ant_pairs_nums=selection['ant_pairs_nums'],
+                                 frequencies=selection['frequencies'],
+                                 freq_chans=selection['freq_chans'],
+                                 times=selection['times'],
+                                 polarizations=selection['polarizations'],
+                                 blt_inds=selection['blt_inds'])
+
+                              
+        
+            
+        self.model_vis.select()
+        
         if(flag_weights_fromdata):
             self.cal_flag_weights.from_file(self.measured_vis,mode='UVDATA')
             self.meta_params.flag_weights_file=data
@@ -369,6 +413,8 @@ class StefcalUVData():
                                                self.model_vis.Nfreqs,
                                                self.model_vis.Npols),dtype=int)
 
+
+            
         self._check_consistency()
         #compute noise matrices
         self._compute_noise()
@@ -416,7 +462,8 @@ class StefcalUVData():
         
 
         
-    def from_ms(self,msfile,flag_weights_fromdata,flagweightsfile=None):
+    def from_ms(self,msfile,flag_weights_fromdata,
+                flagweightsfile=None,selection=selection):
         """
         initialize stefcal from a measurement set
         args:
@@ -428,7 +475,9 @@ class StefcalUVData():
         self._read_files(msfile,mode='MS',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile)
-    def from_miriad(self,miriaddata,miriadmodel,flag_weights_fromdata,flagweightsfile=None):
+    def from_miriad(self,miriaddata,miriadmodel,
+                    flag_weights_fromdata,flagweightsfile=None,
+                    select_data=False,selection=selection):
         """
         initialize stefcal from miriad files
         args:
@@ -442,7 +491,10 @@ class StefcalUVData():
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
                          model=miriadmodel)
-    def from_fhd(self,fhddata,fhdmodel,flag_weights_fromdata,flagweightsfile=None):
+    def from_fhd(self,fhddata,fhdmodel,
+                 flag_weights_fromdata,
+                 flagweightsfile=None,
+                 selection={}):
         """
         initialize stefcal from a fhd
         args:
@@ -454,9 +506,12 @@ class StefcalUVData():
         self._read_files(fhddata,mode='FHD',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
-                         model=fhdmodel)
+                         model=fhdmodel,select_data=select_data,selection=selection)
         
-    def from_uvfits(self,uvfitsdata,uvfitsmodel,flag_weights_fromdata,flagweightsfile=None):
+    def from_uvfits(self,uvfitsdata,uvfitsmodel,
+                    flag_weights_fromdata,
+                    flagweightsfile=None,
+                    selection={}):
         """
         initialize stefcal from miriad files
         args:
@@ -469,7 +524,7 @@ class StefcalUVData():
         self._read_files(uvfitsdata,mode='UVFITS',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
-                         model=uvfitsmodel)
+                         model=uvfitsmodel,select_data=select_data,selection=selection)
 
     def _matrix_2_blt_list(self,blt_matrix):
         """
