@@ -378,11 +378,6 @@ class StefcalUVData():
                                  times=selection['times'],
                                  polarizations=selection['polarizations'],
                                  blt_inds=selection['blt_inds'])
-
-                              
-        
-            
-        self.model_vis.select()
         
         if(flag_weights_fromdata):
             self.cal_flag_weights.from_file(self.measured_vis,mode='UVDATA')
@@ -463,7 +458,7 @@ class StefcalUVData():
 
         
     def from_ms(self,msfile,flag_weights_fromdata,
-                flagweightsfile=None,selection=selection):
+                flagweightsfile=None,selection={}):
         """
         initialize stefcal from a measurement set
         args:
@@ -474,10 +469,10 @@ class StefcalUVData():
         """
         self._read_files(msfile,mode='MS',
                          flag_weights_fromdata=flag_weights_fromdata,
-                         flagweightsfile=flagweightsfile)
+                         flagweightsfile=flagweightsfile,selection=selection)
     def from_miriad(self,miriaddata,miriadmodel,
                     flag_weights_fromdata,flagweightsfile=None,
-                    select_data=False,selection=selection):
+                    select_data=False,selection={}):
         """
         initialize stefcal from miriad files
         args:
@@ -490,7 +485,8 @@ class StefcalUVData():
         self._read_files(miriaddata,mode='MIRIAD',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
-                         model=miriadmodel)
+                         model=miriadmodel,
+                         selection=selection)
     def from_fhd(self,fhddata,fhdmodel,
                  flag_weights_fromdata,
                  flagweightsfile=None,
@@ -506,7 +502,7 @@ class StefcalUVData():
         self._read_files(fhddata,mode='FHD',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
-                         model=fhdmodel,select_data=select_data,selection=selection)
+                         model=fhdmodel,selection=selection)
         
     def from_uvfits(self,uvfitsdata,uvfitsmodel,
                     flag_weights_fromdata,
@@ -524,7 +520,7 @@ class StefcalUVData():
         self._read_files(uvfitsdata,mode='UVFITS',
                          flag_weights_fromdata=flag_weights_fromdata,
                          flagweightsfile=flagweightsfile,
-                         model=uvfitsmodel,select_data=select_data,selection=selection)
+                         model=uvfitsmodel,selection=selection)
 
     def _matrix_2_blt_list(self,blt_matrix):
         """
