@@ -169,8 +169,8 @@ class StefcalUVData():
         read in fhd visibility files
         args: dataname, name of the fhd file
         '''
-        self.model_vis.read_fhd(dataname)
-        self.measured_vis.read_fhd(modelname,use_model=True)
+        self.measured_vis.read_fhd(dataname)
+        self.model_vis.read_fhd(modelname,use_model=True)
         
     def _load_uvfits(self,dataname, modelname):
         '''
