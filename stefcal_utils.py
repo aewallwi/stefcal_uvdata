@@ -21,12 +21,16 @@ def correct_vis(uvdata,uvcal,applyGains=False):
     #print('data array before application='+str(corrected_vis.data_array))
     #print('gains='+str(uvcal.gain_array))
     #print('data type='+str(corrected_vis.data_array.dtype))
-    if uvdata.antenna_numbers.max()==len(uvdata.antenna_numbers):
-        indsub=1
-    else:
-        indsub=0
-    for ant in uvdata.antenna_numbers:
-        antind=ant-indsub
+    #print('ant max='+str(uvdata.antenna_numbers.max()))
+    #print('ant nums='+str(uvdata.antenna_numbers))
+    unique_ants=np.unique(np.vstack([uvdata.ant_1_array,uvdata.ant_2_array]))
+    ant_dict={}
+    ant_dict_inv={}
+    for antind,antnum in enumerate(unique_ants):
+        ant_dict[antind]=antnum
+        ant_dict_inv[antnum]=antind
+    for antind in ant_dict.keys():
+        ant=ant_dict[antind]
         for tnum in range(corrected_vis.Ntimes):
             selection=np.logical_and(corrected_vis.ant_2_array==ant,
                                      corrected_vis.time_array==uvcal.time_array[tnum])
@@ -93,7 +97,6 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
             for chan in range(uvmodel.Nfreqs):
                 wbase[:,spw,chan,pol]*=avg_amp
     return n_flag,ant_flags,bl_flags,wbase
-
 
 
 
