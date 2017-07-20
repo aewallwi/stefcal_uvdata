@@ -293,8 +293,10 @@ class StefcalUVData():
                                                        pol]
                     self.meta_params.chi_square[chan,tnum,pol]=np.sum(np.abs((data_select-np.conj(gain1_select)*gain2_select*model_select)*weight_select/weight_select.sum())**2.)
                     self.meta_params.chi_square[chan,tnum,pol]/=self.meta_params.noise_tblavg[chan]
-                            
-                    neff=np.sum(weight_select)/np.max(weight_select)
+                    if len(weight_select)>0:
+                        neff=np.sum(weight_select)/np.max(weight_select)
+                    else:
+                        neff=0.
                     self.meta_params.dof[chan,tnum,pol]=neff-1
                     for antnum in u_ants:
                         selection_ant=np.logical_or(np.logical_xor(self.measured_vis.ant_1_array==antnum,
@@ -327,7 +329,10 @@ class StefcalUVData():
                         self.meta_params.chi_square_per_ant[ant_dict_inv[antnum],chan,tnum,pol]=\
                         np.sum(np.abs((data_ant_select-np.conj(gain1_ant_select)*gain2_ant_select*model_ant_select)*weight_ant_select/weight_ant_select.sum())**2.)
                         self.meta_params.chi_square_per_ant[ant_dict_inv[antnum],chan,tnum,pol]/=self.meta_params.noise_tblavg[chan]
-                        neff_ant=np.sum(weight_ant_select)/np.max(weight_ant_select)
+                        if len(weight_ant_select)>0:
+                            neff_ant=np.sum(weight_ant_select)/np.max(weight_ant_select)
+                        else:
+                            neff_ant=0.
                         self.meta_params.dof_per_ant[ant_dict_inv[antnum],chan,tnum,pol]=neff_ant-1
         self.uvcal.quality_array=self.meta_params.chi_square_per_ant/self.meta_params.dof_per_ant
     def _read_files(self,data,mode,flag_weights_fromdata,flagweightsfile=None,model=None,selection={}):
@@ -778,6 +783,7 @@ class StefcalUVData():
                     #    print('data_mat='+str(data_mat[0,0,:]))
                     #    print('flags_mat='+str(flags_mat[0,0,:]))
                     #    print('model_mat='+str(model_mat[0,0,:]))
+                    #print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     ant_flags,niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
                                                                  weights_mat,
                                                                  flags_mat,
@@ -791,6 +797,7 @@ class StefcalUVData():
                                                                  perterb=perterb)
                     #if DEBUG:
                         #print('gains.shape='+str(gains.shape))
+                        #print('success calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     self.meta_params.Niterations[tstep,:,chan,pol]=niter
                     for tsn,ts in enumerate(t_steps):
                         self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains

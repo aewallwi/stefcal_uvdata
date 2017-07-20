@@ -74,7 +74,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
     if trim_neff:
         for nt,time in enumerate(u_times):
             selection=uvmodel.time_array==time
-            n_flag,ant_flags[nt],avg_amp[selection],avg_flags[selection]=flag_neff(avg_amp,
+            n_flag,ant_flags[nt],avg_amp[selection],avg_flags[selection]=flag_neff(avg_amp[selection],
                                                                                    bl_flags[selection,0,0,0],
                                                                                    mode='blt_list',
                                                                                    ant1List=uvmodel.ant_1_array[selection],
@@ -149,6 +149,8 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
         flags_array_c=np.empty(weights_array_c.shape,dtype=bool);flags_array_c[:]=False
     else:
         assert flags_array.dtype==bool
+        print('flags_array.shape='+str(flags_array.shape))
+        print('weights_array.shape='+str(weights_array.shape))
         assert flags_array.shape==weights_array.shape
         flags_array_c=copy.copy(flags_array)
         weights_array_c[flags_array_c]=0.

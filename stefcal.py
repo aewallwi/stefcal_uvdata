@@ -32,7 +32,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
         trim_neff: specify whether to try trimming baselines responsible for small
                    min_bl_per_ant. 
    Returns: 
-        ant_flags, Nant np array of boolean flags indicating antennas flagged over all times
+        ant_flags, NtimesxNant np array of boolean flags indicating antennas flagged over all times
         flag_matrix, Ntime x Nant x Nant np array of boolean flags indicating 
                    baselines flagged. 
         niter, n_cycles np array of integers. Denotes number of iterations 
@@ -56,8 +56,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
 
 
-    #for nt in range(nTimes):
-    #   ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
+    for nt in range(nTimes):
+       ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
     
     #if trim_neff:
     #    for nt in range(data_matrix.shape[0]):
@@ -76,7 +76,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
 
     
 
-    antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#the numbers of antennas not flagged
+    antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#only calibrate the antennas
+    #that exceed the minimal number of baselines on the minimum required number of times
     #now run stefcal
     _eps=1.
     niter=np.zeros(n_cycles)
@@ -158,7 +159,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                 for nt in range(nTimes):
                     data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
                     data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
-    return ant_flags_combined,niter,gains
+    return ant_flags,niter,gains
                 
     
         
