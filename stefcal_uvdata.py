@@ -532,7 +532,7 @@ class StefcalUVData():
                          flagweightsfile=flagweightsfile,
                          model=uvfitsmodel,selection=selection)
 
-    def _matrix_2_blt_list(self,blt_matrix,ant_dict):
+    def _matrix_2_blt_list(self,blt_matrix,ant_dict,ant_flags):
         """
         convert a matrix of Ntimes x Nant x Nant 
         to a basline-time ordered list
@@ -544,7 +544,13 @@ class StefcalUVData():
         """
         iscomplex=(blt_matrix.dtype=='complex64' or blt_matrix.dtype=='complex128')
         timeList=np.unique(self.measured_vis.time_array)
+        ant_dict_c=copy.copy(ant_dic)
         nAnt=len(ant_dict)
+        ant_flags_all=np.all(ant_flags,axis=0)
+        ant_dict={}
+        for ind,key in enumerate(ant_dict_c.keys()):
+            ant_dict[ind]=ant_dict_c[key]
+        nAnt=len(nAnt)
         output=np.empty(self.measured_vis.Nblts,dtype=blt_matrix.dtype)
         for t_step in range(self.measured_vis.Ntimes):
             t_selection=self.measured_vis.time_array==timeList[t_step]
@@ -568,7 +574,7 @@ class StefcalUVData():
         return output
                     
         
-    def _blt_list_2_matrix(self,blt_list,t_steps,ant_dict,hermit=True):
+    def _blt_list_2_matrix(self,blt_list,t_steps,ant_dict,ant_flags,hermit=True):
         """
         convert a baseline-time ordered list into a 
         Ntimes x NAnt x NAnt matrix 
@@ -580,8 +586,17 @@ class StefcalUVData():
         """
         iscomplex=(blt_list.dtype=='complex64' or blt_list.dtype=='complex128')
         timeList=np.unique(self.measured_vis.time_array)
-        
+        ant_dict_c=copy.copy(ant_dict)
         nT=len(t_steps)
+        nAnt=len(ant_dict)
+        ant_flags_all=np.all(ant_flags,axis=0)
+        #filter bad antennas
+        for antnum in range(nAnt)[ant_flags_all]:
+            del ant_dict[antnum]
+        #rebuild index
+        ant_dict={}
+        for ind,key in enumerate(ant_dict_c.keys()):
+            ant_dict[ind]=ant_dict_c[key]
         nAnt=len(ant_dict)
         output=np.empty((nT,nAnt,nAnt),dtype=blt_list.dtype)
         if str(output.dtype)=='bool':
@@ -777,10 +792,14 @@ class StefcalUVData():
                     #print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     t_steps=range(tstep*self.meta_params.t_avg,np.min([(tstep+1)*self.meta_params.t_avg,
                                                                        self.measured_vis.Ntimes]))
-                    data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=True)
-                    model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=True)
-                    weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=True)
-                    flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=False)
+                    data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),
+                                                     t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                    model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),
+                                                      t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                    weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),
+                                                        t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                    flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),
+                                                      t_steps,ant_dict,hermit=False,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
                     #if DEBUG:
                     #    print('t_steps='+str(t_steps))
                     #    print('weights_mat.shape='+str(weights_mat.shape))
