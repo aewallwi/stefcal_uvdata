@@ -133,9 +133,9 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                 
                 zmat=np.diag(np.conj(gainsG)).dot(model_matrixG[nt])
                 if DEBUG:
-                    print('gainsG.shape='+str(gainsG.shape))
-                    print('model_matrixG[nt].shape='+str(model_matrix[nt].shape))
-                    print('weights_matrixG[nt].shape='+str(weights_matrixG[nt].shape))
+                    #print('gainsG.shape='+str(gainsG.shape))
+                    #print('model_matrixG[nt].shape='+str(model_matrix[nt].shape))
+                    #print('weights_matrixG[nt].shape='+str(weights_matrixG[nt].shape))
                 zmat_w=np.diag(np.conj(gainsG)).dot(model_matrixG[nt]*weights_matrixG[nt])
                 gNumerator+=np.sum(np.conj(zmat_w)*data_matrixG[nt],axis=0)
                 gDenominator+=np.sum(np.conj(zmat_w)*zmat,axis=0)

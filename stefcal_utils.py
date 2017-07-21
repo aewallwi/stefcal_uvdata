@@ -101,6 +101,22 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
 
 
 
+def flag_ants(weight_array,threshhold=2.,mode='matrix',ant1List=None,ant2List=None):
+    '''
+    Flags antennas with neff smaller than a threshold. blt_list mode assumes a single time.
+    Args: 
+         weight_array: either an NantxNant matrix of antenna cross correlations with flagged antenna weights set to zero or a N_blt array of cross correlations
+         thresshold: the minimum effective number of baselines per antenna
+         mode: specify whether the weights are in NantxNant matrix form or Nant*(Nant-1)/2 list of baselines. 
+    '''
+    assert weight_array.dtype=np.float64
+    assert mode in ['matrix','blt_list']
+    ant_flags=np.empty(matrix.shape[0],dtype=bool);ant_flags[:]=False
+    ant_flags=compute_neff(weight_array,mode=mode,
+                           ant1List=ant1List,ant2List=ant2List)<threshhold
+    return ant_flags
+
+
 def compute_neff(weights_array,mode='matrix',ant1List=None,ant2List=None):
     '''
     computes the number of effective baselines per antenna for a weighting matrix wMat
@@ -113,7 +129,10 @@ def compute_neff(weights_array,mode='matrix',ant1List=None,ant2List=None):
     if mode == 'matrix':
         nEff=np.zeros(weights_array.shape[0])
         for antnum in range(weights_array.shape[0]):
-            nEff[antnum]=np.abs(weights_array[antnum,:]).sum()/np.abs(weights_array[antnum,:]).max()
+            if np.any(weights_array[antnum,:]!=0.):
+                nEff[antnum]=np.abs(weights_array[antnum,:]).sum()/np.abs(weights_array[antnum,:]).max()
+            else:
+                nEff[antnum]=0.
         return nEff
     elif mode == 'blt_list':
         assert not(ant1List is None) and not(ant2List is None)
