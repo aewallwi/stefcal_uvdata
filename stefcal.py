@@ -58,8 +58,8 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     #ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
     #for nt in range(nTimes):
     #   ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
-    for nt in range(nTimes):
-       print weights_matrix[nt][ant_flags[nt],:]
+    #for nt in range(nTimes):
+    #    print weights_matrix[nt][ant_flags[nt],:]
 
     weights_matrix[flag_matrix]=0.
     #if trim_neff:

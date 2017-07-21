@@ -774,7 +774,7 @@ class StefcalUVData():
             for chan in range(self.measured_vis.Nfreqs):
                 full_flags=np.empty((self.measured_vis.Ntimes,self.measured_vis.Nants_data,self.measured_vis.Nants_data),dtype=bool)
                 for tstep in range(self.meta_params.Ntime_steps):
-                    print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
+                    #print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     t_steps=range(tstep*self.meta_params.t_avg,np.min([(tstep+1)*self.meta_params.t_avg,
                                                                        self.measured_vis.Ntimes]))
                     data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=True)
@@ -788,7 +788,7 @@ class StefcalUVData():
                     #    print('data_mat='+str(data_mat[0,0,:]))
                     #    print('flags_mat='+str(flags_mat[0,0,:]))
                     #    print('model_mat='+str(model_mat[0,0,:]))
-                    print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
+                    #print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
                                                        weights_mat,
                                                        flags_mat,
