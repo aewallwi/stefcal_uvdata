@@ -4,6 +4,9 @@ import stefcal_utils as utils
 DEBUG=False
 #from numba import jit
 
+'''
+This method no longer does not do any flagging and can be vastly streamlined in light of this.
+'''
 def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                     refant=0,n_phase_iter=5,n_cycles=1,min_bl_per_ant=2,
                     eps=1e-10,min_ant_times=1,perterb=0.):
@@ -52,13 +55,13 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     nTimes=data_matrix.shape[0]
     #start by flagging antennas with insufficient baselines
     weights_matrix=copy.copy(weights_matrix)
-    weights_matrix[flag_matrix]=0.
-    ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
-
-
+    #ant_flags=np.empty(data_matrix.shape[:2],dtype=bool);ant_flags[:]=False
+    #for nt in range(nTimes):
+    #   ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
     for nt in range(nTimes):
-       ant_flags[nt][utils.compute_neff(weights_matrix[nt])<min_bl_per_ant]=True
-    
+       print weights_matrix[nt][ant_flags[nt],:]
+
+    weights_matrix[flag_matrix]=0.
     #if trim_neff:
     #    for nt in range(data_matrix.shape[0]):
     #        nf,ant_flags[nt],weights_matrix[nt],flag_matrix[nt],_=flag_neff(weights_matrix[nt],
@@ -69,13 +72,14 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             #print('new_weights='+str(weights_matrix[nt]))
             #print('any new flags?'+str(np.any(flag_matrix[nt])))
             #print('new_flags='+str(flag_matrix[nt]))
-
+    #print ant_flags
     ant_flags_combined=np.empty(nAnt,dtype=bool);ant_flags_combined[:]=False
-    for m in range(nAnt):
-        ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])<min_ant_times
+    #for m in range(nAnt):
+    #    ant_flags_combined[m]=len(ant_flags[np.invert(ant_flags[:,m])])<min_ant_times
 
+    #print('ant_flags_combined='+str(ant_flags_combined))
     
-
+    #print('ant_flags_combined='+str(ant_flags_combined))
     antNumbers=np.arange(nAnt).astype(int)[np.invert(ant_flags_combined)]#only calibrate the antennas
     #that exceed the minimal number of baselines on the minimum required number of times
     #now run stefcal
@@ -89,10 +93,12 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
     gainsG_temp=np.ones_like(gainsG)
     data_matrixG=np.zeros((nTimes,nAntG,nAntG),dtype=complex)
     model_matrixG=np.zeros_like(data_matrixG)
+    flag_matrixG=np.empty(data_matrixG.shape,dtype=bool)
     weights_matrixG=np.zeros((nTimes,nAntG,nAntG),dtype=float)
-    gNumerator=np.zeros_like(gains)
-    gDenominator=np.zeros_like(gains)
-    gnew=np.zeros_like(gains)
+    #make sure that numerator and denominator are same length as gainsG
+    gNumerator=np.zeros_like(gainsG)
+    gDenominator=np.zeros_like(gainsG)
+    gnew=np.zeros_like(gainsG)
     #initialize matrices
     for n in range(nAntG):
         for m in range(n):
@@ -102,6 +108,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
             model_matrixG[:,n,m]=model_matrix[:,antNumbers[n],antNumbers[m]]
             weights_matrixG[:,m,n]=weights_matrix[:,antNumbers[m],antNumbers[n]]
             weights_matrixG[:,n,m]=weights_matrix[:,antNumbers[n],antNumbers[m]]
+            flag_matrixG[:,n,m]=flag_matrix[:,antNumbers[n],antNumbers[m]]
     #run stefcal cycles
     #if DEBUG:
     #    print('data_matrix='+str(data_matrixG[0,1,:]))
@@ -159,7 +166,7 @@ def stefcal_scaler(data_matrix,model_matrix,weights_matrix,flag_matrix,
                 for nt in range(nTimes):
                     data_matrixG[nt,m,n]/=(gainsG[n]*np.conj(gainsG[m]))
                     data_matrixG[nt,n,m]/=(gainsG[m]*np.conj(gainsG[n]))
-    return ant_flags,niter,gains
+    return niter,gains
                 
     
         

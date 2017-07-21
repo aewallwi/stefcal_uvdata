@@ -28,7 +28,9 @@ class CalFlagWeights():
         desc='unique string identifier associating calflagweights with cal file and meta file'
         self._id=uvp.UVParameter('id',description=desc,
                                  expected_type=str)
-            
+        desc='array of times and flags representing antenna flags.'
+        self._ant_flag_array=uvp.UVParameter('ant_flag_array',description=desc,
+                                             form=('Nants_data,Ntimes','Nspws,Npols')
     def from_file(self,data,mode='CFWS'):
         '''
         initialize flagweights object from calFlagWeights file

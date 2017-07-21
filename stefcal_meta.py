@@ -126,7 +126,7 @@ class StefcalMeta():
                                   form=('Nfreqs','Ntimes','Njones'),
                                   expected_type=float)
         
-        
+
         #self._noise_tavg=uvp.UVParameter('noise_tavg',
         #                                 description='noise levels in uncalibrated'
         #                                 'visibilities computed by taking differences'

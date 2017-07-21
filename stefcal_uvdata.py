@@ -648,6 +648,10 @@ class StefcalUVData():
                flags.shape)
         assert flags.dtype==bool
         self.cal_flag_weights.flag_array=flags
+    def set_ant_flags(self,ant_flags):
+        assert(ant_flags.shape==self.cal_flag_weights.ant_flags.shape)
+        assert ant_flags.dtype==bol
+        self.cal_flag_weights.ant_flags=ant_flags
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
@@ -770,6 +774,7 @@ class StefcalUVData():
             for chan in range(self.measured_vis.Nfreqs):
                 full_flags=np.empty((self.measured_vis.Ntimes,self.measured_vis.Nants_data,self.measured_vis.Nants_data),dtype=bool)
                 for tstep in range(self.meta_params.Ntime_steps):
+                    print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     t_steps=range(tstep*self.meta_params.t_avg,np.min([(tstep+1)*self.meta_params.t_avg,
                                                                        self.measured_vis.Ntimes]))
                     data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),t_steps,ant_dict,hermit=True)
@@ -783,25 +788,25 @@ class StefcalUVData():
                     #    print('data_mat='+str(data_mat[0,0,:]))
                     #    print('flags_mat='+str(flags_mat[0,0,:]))
                     #    print('model_mat='+str(model_mat[0,0,:]))
-                    #print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
-                    ant_flags,niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
-                                                                 weights_mat,
-                                                                 flags_mat,
-                                                                 refant=self.meta_params.refant,
-                                                                 n_phase_iter=self.meta_params.n_phase_iter,
-                                                                 n_cycles=self.meta_params.n_cycles,
-                                                                 min_bl_per_ant=self.meta_params.min_bl_per_ant,
-                                                                 eps=self.meta_params.eps,
-                                                                 min_ant_times=self.meta_params.min_ant_times,
-                                                                 #trim_neff=self.meta_params.trim_neff,
-                                                                 perterb=perterb)
+                    print('calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
+                    niter,gains=stefcal.stefcal_scaler(data_mat,model_mat,
+                                                       weights_mat,
+                                                       flags_mat,
+                                                       refant=self.meta_params.refant,
+                                                       n_phase_iter=self.meta_params.n_phase_iter,
+                                                       n_cycles=self.meta_params.n_cycles,
+                                                       min_bl_per_ant=self.meta_params.min_bl_per_ant,
+                                                       eps=self.meta_params.eps,
+                                                       min_ant_times=self.meta_params.min_ant_times,
+                                                       #trim_neff=self.meta_params.trim_neff,
+                                                       perterb=perterb)
                     #if DEBUG:
                         #print('gains.shape='+str(gains.shape))
-                        #print('success calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
+                    print('success calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     self.meta_params.Niterations[tstep,:,chan,pol]=niter
                     for tsn,ts in enumerate(t_steps):
                         self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
-                        self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
+                        #self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
                         #Need to translate back into blt list!
                         #if DEBUG:
                             #print('shape niterations='+str(self.meta_params.Niterations.shape))

@@ -79,6 +79,7 @@ def generate_gaussian_weights(sigma_w,uvmodel,modelweights=False,regularizer=1e-
                                                                                    mode='blt_list',
                                                                                    ant1List=uvmodel.ant_1_array[selection],
                                                                                    ant2List=uvmodel.ant_2_array[selection])
+    #make sure to flag all channels and pols for a flagged antenna.
     for pol in range(uvmodel.Npols):
         for chan in range(uvmodel.Nfreqs):
             for spw in range(uvmodel.Nspws):
@@ -130,7 +131,7 @@ def compute_neff(weights_array,mode='matrix',ant1List=None,ant2List=None):
         return nEff
             
 
-def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=None,ant2List=None):
+def flag_neff(weights_array,flags_array=None,threshold=2.,mode='matrix',ant1List=None,ant2List=None):
     '''
     given a weighting matrix, flag baselines until the effective
     of antennas for each antenna is greater than some threshold.
@@ -149,8 +150,8 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
         flags_array_c=np.empty(weights_array_c.shape,dtype=bool);flags_array_c[:]=False
     else:
         assert flags_array.dtype==bool
-        print('flags_array.shape='+str(flags_array.shape))
-        print('weights_array.shape='+str(weights_array.shape))
+        #print('flags_array.shape='+str(flags_array.shape))
+        #print('weights_array.shape='+str(weights_array.shape))
         assert flags_array.shape==weights_array.shape
         flags_array_c=copy.copy(flags_array)
         weights_array_c[flags_array_c]=0.
@@ -216,9 +217,9 @@ def flag_neff(weights_array,flags_array=None,threshold=2,mode='matrix',ant1List=
                     weights_array_c[selection]=temp
                     flags_array_c[selection]=temp_f
                     nFlag+=1
-            nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
-        print('neff.min='+str(nEff.min()))
-        print('nflag='+str(nFlag))
+                    nEff=compute_neff(weights_array_c,mode,ant1List,ant2List)
+        #print('neff.min='+str(nEff.min()))
+        #print('nflag='+str(nFlag))
             #print('nEff='+str(nEff))
         antFlag=np.empty(nAnt,dtype=bool)
         antFlag[:]=False
