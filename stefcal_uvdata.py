@@ -418,8 +418,12 @@ class StefcalUVData():
                                                self.model_vis.Nfreqs,
                                                self.model_vis.Npols),dtype=int)
 
-
-            
+        self.cal_flag_weights.ant_flag_array=np.empty((self.measured_vis.Nants_data,
+                                                       self.measured_vis.Nspws,
+                                                       self.measured_vis.Ntimes,
+                                                       self.measured_vis.Npols),dtype=bool)
+        self.cal_flag_weights.ant_flag_array[:]=False
+        
         self._check_consistency()
         #compute noise matrices
         self._compute_noise()
@@ -591,8 +595,6 @@ class StefcalUVData():
         nAnt=len(ant_dict)
         ant_flags_all=np.all(ant_flags,axis=0)
         #filter bad antennas
-        for antnum in range(nAnt)[ant_flags_all]:
-            del ant_dict[antnum]
         #rebuild index
         ant_dict={}
         for ind,key in enumerate(ant_dict_c.keys()):
@@ -664,9 +666,9 @@ class StefcalUVData():
         assert flags.dtype==bool
         self.cal_flag_weights.flag_array=flags
     def set_ant_flags(self,ant_flags):
-        assert(ant_flags.shape==self.cal_flag_weights.ant_flags.shape)
+        assert(ant_flags.shape==self.cal_flag_weights.ant_flag_array.shape)
         assert ant_flags.dtype==bol
-        self.cal_flag_weights.ant_flags=ant_flags
+        self.cal_flag_weights.ant_flag_array=ant_flags
     def load_state(self,input_root):
         """
         load state from meta and cal flag weights file. 
@@ -793,13 +795,13 @@ class StefcalUVData():
                     t_steps=range(tstep*self.meta_params.t_avg,np.min([(tstep+1)*self.meta_params.t_avg,
                                                                        self.measured_vis.Ntimes]))
                     data_mat=self._blt_list_2_matrix(self.measured_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),
-                                                     t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                                                     t_steps,ant_dict,ant_flags=self.cal_flag_weights.ant_flag_array[:,self.meta_params.spw,t_steps,pol])
                     model_mat=self._blt_list_2_matrix(self.model_vis.data_array[:,self.meta_params.spw,chan,pol].squeeze(),
-                                                      t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                                                      t_steps,ant_dict,ant_flags=self.cal_flag_weights.ant_flag_array[:,self.meta_params.spw,t_steps,pol])
                     weights_mat=self._blt_list_2_matrix(self.cal_flag_weights.weights_array[:,self.meta_params.spw,chan,pol].squeeze(),
-                                                        t_steps,ant_dict,hermit=True,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                                                        t_steps,ant_dict,ant_flags=self.cal_flag_weights.ant_flag_array[:,self.meta_params.spw,t_steps,pol])
                     flags_mat=self._blt_list_2_matrix(self.cal_flag_weights.flag_array[:,self.meta_params.spw,chan,pol].squeeze(),
-                                                      t_steps,ant_dict,hermit=False,ant_flags=self.cal_flag_weights.ant_flags[:,spw,t_steps,pol])
+                                                      t_steps,ant_dict,ant_flags=self.cal_flag_weights.ant_flag_array[:,self.meta_params.spw,t_steps,pol])
                     #if DEBUG:
                     #    print('t_steps='+str(t_steps))
                     #    print('weights_mat.shape='+str(weights_mat.shape))
@@ -824,7 +826,8 @@ class StefcalUVData():
                     print('success calibrating pol=%d,chan=%d,tstep=%d'%(pol,chan,tstep))
                     self.meta_params.Niterations[tstep,:,chan,pol]=niter
                     for tsn,ts in enumerate(t_steps):
-                        self.uvcal.gain_array[:,self.meta_params.spw,chan,ts,pol]=gains
+                        aflag=np.invert(self.cal_flag_weights.ant_flag_array[:,self.meta_params.spw,pol]).flatten()
+                        self.uvcal.gain_array[aflag,self.meta_params.spw,chan,ts,pol]=gains
                         #self.uvcal.flag_array[:,self.meta_params.spw,chan,ts,pol]=ant_flags[tsn]
                         #Need to translate back into blt list!
                         #if DEBUG:

@@ -109,7 +109,7 @@ def flag_ants(weight_array,threshhold=2.,mode='matrix',ant1List=None,ant2List=No
          thresshold: the minimum effective number of baselines per antenna
          mode: specify whether the weights are in NantxNant matrix form or Nant*(Nant-1)/2 list of baselines. 
     '''
-    assert weight_array.dtype=np.float64
+    assert weight_array.dtype==np.float64
     assert mode in ['matrix','blt_list']
     ant_flags=np.empty(matrix.shape[0],dtype=bool);ant_flags[:]=False
     ant_flags=compute_neff(weight_array,mode=mode,
